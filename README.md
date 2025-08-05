@@ -15,7 +15,9 @@ Una aplicación moderna de gráficos de trading construida con React, TypeScript
 ## 🚀 Tecnologías
 
 - **Frontend**: React 19, TypeScript, SCSS
+- **Backend**: Django 4.x, Django REST Framework
 - **Gráficos**: Lightweight Charts v5
+- **Base de Datos**: SQLite (desarrollo) / PostgreSQL (producción)
 - **Estilos**: Sistema de diseño modular con variables SCSS
 - **Responsive**: Mobile-first design
 
@@ -33,18 +35,28 @@ git clone https://github.com/tu-usuario/trading-charts.git
 cd trading-charts
 ```
 
-2. **Instalar dependencias del frontend**
+2. **Configurar el Backend**
+```bash
+cd backend
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# Linux/Mac
+source venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+3. **Configurar el Frontend**
 ```bash
 cd frontend
 npm install
-```
-
-3. **Ejecutar en modo desarrollo**
-```bash
 npm start
 ```
 
-La aplicación estará disponible en `http://localhost:3000`
+- **Backend**: `http://localhost:8000`
+- **Frontend**: `http://localhost:3000`
 
 ## 🏗️ Estructura del Proyecto
 
@@ -59,8 +71,14 @@ trading_charts/
 │   │   │   ├── components.scss
 │   │   │   └── App.scss
 │   │   └── App.tsx
-│   └── package.json
-├── backend/                  # API Python (futuro)
+│   ├── package.json
+│   └── README.md
+├── backend/                  # API Django
+│   ├── apis/               # Aplicaciones Django
+│   ├── trade_charts/       # Configuración principal
+│   ├── manage.py
+│   ├── requirements.txt
+│   └── README.md
 └── README.md
 ```
 

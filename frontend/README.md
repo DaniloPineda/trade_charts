@@ -1,46 +1,116 @@
-# Getting Started with Create React App
+# 📈 Frontend - Trading Charts React App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Aplicación React moderna para visualización de gráficos de trading con TypeScript y SCSS.
 
-## Available Scripts
+## 🛠️ Tecnologías
 
-In the project directory, you can run:
+- **Framework**: React 19
+- **Lenguaje**: TypeScript
+- **Estilos**: SCSS con sistema de diseño modular
+- **Gráficos**: Lightweight Charts v5
+- **Build Tool**: Create React App
+- **Fuentes**: Inter (Google Fonts)
 
-### `npm start`
+## 📦 Instalación
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### Prerrequisitos
+- Node.js (v16 o superior)
+- npm o yarn
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### Pasos de Instalación
 
-### `npm test`
+1. **Instalar dependencias**
+```bash
+cd frontend
+npm install
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+2. **Ejecutar en modo desarrollo**
+```bash
+npm start
+```
 
-### `npm run build`
+La aplicación estará disponible en `http://localhost:3000`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 🏗️ Estructura del Proyecto
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```
+frontend/
+├── public/                  # Archivos públicos
+│   ├── index.html
+│   └── favicon.ico
+├── src/
+│   ├── components/         # Componentes React
+│   │   └── trading-charts.tsx
+│   ├── styles/            # Archivos SCSS
+│   │   ├── variables.scss
+│   │   ├── mixins.scss
+│   │   ├── components.scss
+│   │   └── App.scss
+│   ├── App.tsx
+│   └── index.tsx
+├── package.json
+└── tsconfig.json
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 🎨 Sistema de Diseño
 
-### `npm run eject`
+### Variables SCSS
+- **Colores**: Paleta profesional para trading
+- **Tipografía**: Inter con pesos optimizados
+- **Espaciado**: Sistema modular de 8px
+- **Sombras**: Sistema de profundidad visual
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+### Componentes
+- **TradingChart**: Componente principal de gráficos
+- **ControlPanel**: Panel de herramientas de análisis
+- **TimePeriodBar**: Selector de períodos temporales
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 🔧 Características
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### Gráficos
+- **Velas Japonesas**: Visualización profesional
+- **Períodos Múltiples**: 15m, 1h, 1d, 1w, 1m, 3m, 1y, 3y
+- **Herramientas**: Líneas de tendencia, Fibonacci, medición
+- **Información**: Precio, cambio, volumen, máximos/mínimos
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+### Interfaz
+- **Responsive**: Mobile-first design
+- **Space-Efficient**: Aprovecha al máximo el espacio
+- **Modern UI**: Diseño profesional con SCSS
+- **Accesibilidad**: Focus states y navegación por teclado
 
-## Learn More
+## 🚀 Scripts Disponibles
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+npm start          # Ejecutar en desarrollo
+npm run build      # Construir para producción
+npm test           # Ejecutar tests
+npm run eject      # Eject (irreversible)
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 🔗 Integración con Backend
+
+La aplicación se conecta al backend Django en `http://localhost:8000`:
+
+- **API Endpoint**: `/api/market-data/`
+- **CORS**: Configurado para desarrollo
+- **Datos Mock**: Generación automática si no hay backend
+
+## 📱 Responsive Design
+
+- **Desktop**: Pantalla completa con controles optimizados
+- **Tablet**: Layout adaptativo
+- **Mobile**: Interfaz compacta con navegación táctil
+
+## 🎯 Características Técnicas
+
+- **TypeScript**: Tipado estático para robustez
+- **React Hooks**: Estado moderno y efectos
+- **SCSS Modules**: Estilos modulares y mantenibles
+- **Performance**: Optimización de renderizado
+- **Accessibility**: ARIA labels y navegación por teclado
+
+## 📝 Licencia
+
+MIT License - ver archivo LICENSE para más detalles.

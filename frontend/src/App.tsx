@@ -6,7 +6,7 @@ function App(): JSX.Element {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Gráfico de Trading</h1>
+        <h1>Soy un imán para el dinero 💰 💰 💰</h1>
       </header>
       <main>
         <TradingChart />

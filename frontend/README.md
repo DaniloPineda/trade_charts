@@ -14,18 +14,21 @@ Aplicación React moderna para visualización de gráficos de trading con TypeSc
 ## 📦 Instalación
 
 ### Prerrequisitos
+
 - Node.js (v16 o superior)
 - npm o yarn
 
 ### Pasos de Instalación
 
 1. **Instalar dependencias**
+
 ```bash
 cd frontend
 npm install
 ```
 
 2. **Ejecutar en modo desarrollo**
+
 ```bash
 npm start
 ```
@@ -56,12 +59,14 @@ frontend/
 ## 🎨 Sistema de Diseño
 
 ### Variables SCSS
+
 - **Colores**: Paleta profesional para trading
 - **Tipografía**: Inter con pesos optimizados
 - **Espaciado**: Sistema modular de 8px
 - **Sombras**: Sistema de profundidad visual
 
 ### Componentes
+
 - **TradingChart**: Componente principal de gráficos
 - **ControlPanel**: Panel de herramientas de análisis
 - **TimePeriodBar**: Selector de períodos temporales
@@ -69,12 +74,14 @@ frontend/
 ## 🔧 Características
 
 ### Gráficos
+
 - **Velas Japonesas**: Visualización profesional
 - **Períodos Múltiples**: 15m, 1h, 1d, 1w, 1m, 3m, 1y, 3y
 - **Herramientas**: Líneas de tendencia, Fibonacci, medición
 - **Información**: Precio, cambio, volumen, máximos/mínimos
 
 ### Interfaz
+
 - **Responsive**: Mobile-first design
 - **Space-Efficient**: Aprovecha al máximo el espacio
 - **Modern UI**: Diseño profesional con SCSS

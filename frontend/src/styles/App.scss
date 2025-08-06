@@ -30,7 +30,7 @@ body {
   @include flex-column;
   background: linear-gradient(135deg, $bg-secondary 0%, $white 100%);
   overflow: hidden;
-  
+
   @include desktop {
     background: linear-gradient(135deg, $gray-50 0%, $white 100%);
   }
@@ -43,20 +43,27 @@ body {
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
-  
+
   &::before {
-    content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: 
-      radial-gradient(circle at 20% 50%, rgba($primary-color, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba($secondary-color, 0.1) 0%, transparent 50%);
+    background:
+      radial-gradient(
+        circle at 20% 50%,
+        rgba($primary-color, 0.1) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 80% 20%,
+        rgba($secondary-color, 0.1) 0%,
+        transparent 50%
+      );
     pointer-events: none;
   }
-  
+
   h1 {
     @include heading-3;
     color: $text-inverse;
@@ -64,16 +71,15 @@ body {
     position: relative;
     z-index: 1;
     margin-bottom: 0;
-    
+
     @include mobile {
       font-size: $font-size-xl;
       padding: 0 $spacing-md;
     }
   }
-  
+
   // Add a subtle subtitle
   &::after {
-    content: 'Análisis de Mercado en Tiempo Real';
     display: block;
     text-align: center;
     @include caption;
@@ -91,11 +97,11 @@ main {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  
+
   @include mobile {
     padding: $spacing-xs;
   }
-  
+
   @include desktop {
     padding: $spacing-sm;
     max-width: none;
@@ -113,17 +119,17 @@ main {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  
+
   @include mobile {
     padding: $spacing-xs;
   }
-  
+
   @include desktop {
     padding: $spacing-md;
     margin: 0;
     height: 100%;
   }
-  
+
   // Chart Header
   .chart-header {
     @include flex-between;
@@ -131,13 +137,13 @@ main {
     padding-bottom: $spacing-xs;
     border-bottom: 1px solid $gray-600;
     flex-shrink: 0;
-    
+
     @include mobile {
       @include flex-column;
       gap: $spacing-xs;
       align-items: stretch;
     }
-    
+
     .chart-title {
       @include heading-3;
       color: $white;
@@ -145,31 +151,34 @@ main {
       font-weight: $font-weight-bold;
       text-shadow: 0 2px 4px rgba($black, 0.3);
       position: relative;
-      
-      &::before {
-        content: '';
-        position: absolute;
-        left: -$spacing-xs;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 2px;
-        height: 16px;
-        background: linear-gradient(135deg, $primary-color, $secondary-color);
-        border-radius: 1px;
+
+      span {
+        margin-right: 5px;
+        &::before {
+          content: '';
+          position: absolute;
+          left: -$spacing-xs;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 2px;
+          height: 24px;
+          background: linear-gradient(135deg, $primary-color, $secondary-color);
+          border-radius: 15px;
+        }
       }
     }
-    
+
     .chart-controls {
       @include flex-center;
       gap: $spacing-xs;
-      
+
       @include mobile {
         flex-direction: column;
         gap: $spacing-xs;
       }
     }
   }
-  
+
   // Control Panel
   .control-panel {
     background: linear-gradient(135deg, $gray-700 0%, $gray-800 100%);
@@ -178,29 +187,29 @@ main {
     margin-bottom: $spacing-xs;
     border: 1px solid $gray-600;
     flex-shrink: 0;
-    
+
     .control-row {
       @include flex-between;
       align-items: center;
       gap: $spacing-sm;
-      
+
       @include mobile {
         @include flex-column;
         gap: $spacing-xs;
         align-items: stretch;
       }
-      
+
       .control-group {
         @include flex-center;
         gap: $spacing-sm;
-        
+
         .control-label {
           @include caption;
           color: $gray-300;
           font-weight: $font-weight-medium;
           white-space: nowrap;
         }
-        
+
         .control-input {
           @include input-base;
           max-width: 120px;
@@ -209,17 +218,17 @@ main {
           background-color: $gray-600;
           border-color: $gray-500;
           color: $white;
-          
+
           &:focus {
             border-color: $primary-color;
             background-color: $gray-600;
           }
-          
+
           &::placeholder {
             color: $gray-400;
           }
         }
-        
+
         .control-select {
           @include input-base;
           max-width: 120px;
@@ -229,18 +238,18 @@ main {
           border-color: $gray-500;
           color: $white;
           cursor: pointer;
-          
+
           &:focus {
             border-color: $primary-color;
             background-color: $gray-600;
           }
         }
       }
-      
+
       .tool-buttons {
         @include flex-center;
         gap: $spacing-sm;
-        
+
         .tool-btn {
           @include button-ghost;
           padding: $spacing-xs $spacing-sm;
@@ -248,13 +257,13 @@ main {
           background-color: $gray-600;
           color: $gray-300;
           border: 1px solid $gray-500;
-          
+
           &:hover {
             background-color: $primary-color;
             color: $white;
             border-color: $primary-color;
           }
-          
+
           &.active {
             background-color: $primary-color;
             color: $white;
@@ -264,18 +273,17 @@ main {
       }
     }
   }
-  
+
   // Form Styles
   .ticker-form {
     @include flex-center;
     gap: $spacing-md;
-    margin-bottom: $spacing-lg;
-    
+
     @include mobile {
       flex-direction: column;
       gap: $spacing-sm;
     }
-    
+
     .ticker-input {
       @include input-base;
       max-width: 120px;
@@ -286,22 +294,22 @@ main {
       color: $text-primary;
       padding: $spacing-xs $spacing-sm;
       font-size: $font-size-sm;
-      
+
       @include mobile {
         max-width: 100%;
       }
-      
+
       &:focus {
         border-color: $primary-color;
         box-shadow: 0 0 0 3px rgba($primary-color, 0.2);
         background-color: $white;
       }
-      
+
       &::placeholder {
         color: $gray-500;
       }
     }
-    
+
     .load-button {
       @include button-primary;
       min-width: 80px;
@@ -310,24 +318,23 @@ main {
       text-transform: uppercase;
       letter-spacing: 0.5px;
       font-size: $font-size-sm;
-      
+
       @include mobile {
         width: 100%;
         height: 48px;
       }
-      
+
       &:hover {
-        transform: translateY(-2px);
         box-shadow: $shadow-lg;
         background-color: $primary-dark;
       }
-      
+
       &:active {
         transform: translateY(0);
       }
     }
   }
-  
+
   // Chart Area
   .chart-area {
     position: relative;
@@ -338,29 +345,29 @@ main {
     border: 1px solid $gray-600;
     flex: 1;
     min-height: 0;
-    
+
     @include desktop {
       min-height: 200px;
     }
-    
+
     .chart-container {
       position: relative;
       width: 100%;
       height: 100%;
       min-height: 300px;
-      
+
       @include mobile {
         min-height: 250px;
       }
-      
+
       @include desktop {
         min-height: 400px;
       }
-      
+
       // Custom scrollbar for chart
       @include scrollbar;
     }
-    
+
     // Chart loading state
     &.loading {
       &::before {
@@ -374,7 +381,7 @@ main {
         z-index: 10;
         @include flex-center;
       }
-      
+
       &::after {
         content: 'Cargando datos...';
         position: absolute;
@@ -387,7 +394,7 @@ main {
       }
     }
   }
-  
+
   // Chart Info Panel
   .chart-info {
     @include flex-between;
@@ -397,41 +404,41 @@ main {
     border-radius: $radius-sm;
     border: 1px solid $gray-600;
     flex-shrink: 0;
-    
+
     @include mobile {
       @include flex-column;
       gap: $spacing-xs;
       text-align: center;
     }
-    
+
     .info-item {
       @include flex-center;
       gap: $spacing-sm;
-      
+
       .label {
         @include caption;
         color: $gray-300;
         font-weight: $font-weight-medium;
       }
-      
+
       .value {
         @include body-text;
         font-weight: $font-weight-semibold;
         color: $white;
       }
-      
+
       &.positive .value {
         color: $success-color;
         text-shadow: 0 1px 2px rgba($success-color, 0.3);
       }
-      
+
       &.negative .value {
         color: $danger-color;
         text-shadow: 0 1px 2px rgba($danger-color, 0.3);
       }
     }
   }
-  
+
   // Time Period Bar
   .time-period-bar {
     background: linear-gradient(135deg, $gray-700 0%, $gray-800 100%);
@@ -440,12 +447,12 @@ main {
     margin-top: $spacing-xs;
     border: 1px solid $gray-600;
     flex-shrink: 0;
-    
+
     .period-buttons {
       @include flex-center;
       gap: $spacing-xs;
       flex-wrap: wrap;
-      
+
       .period-btn {
         @include button-ghost;
         padding: $spacing-xs $spacing-sm;
@@ -457,21 +464,21 @@ main {
         border-radius: $radius-sm;
         min-width: 40px;
         text-align: center;
-        
+
         &:hover {
           background-color: $primary-color;
           color: $white;
           border-color: $primary-color;
           transform: translateY(-1px);
         }
-        
+
         &.active {
           background-color: $primary-color;
           color: $white;
           border-color: $primary-color;
           box-shadow: 0 2px 4px rgba($primary-color, 0.3);
         }
-        
+
         @include mobile {
           min-width: 35px;
           font-size: $font-size-xs;
@@ -486,12 +493,12 @@ main {
 @media (max-width: $breakpoint-sm) {
   .App-header {
     padding: $spacing-lg 0;
-    
+
     h1 {
       font-size: $font-size-2xl;
     }
   }
-  
+
   main {
     padding: $spacing-lg $spacing-md;
   }
@@ -505,7 +512,7 @@ main {
           font-size: $font-size-2xl;
         }
       }
-      
+
       .chart-area {
         .chart-container {
           height: calc(100vh - 200px);
@@ -521,20 +528,20 @@ main {
     background-color: $gray-900;
     color: $text-inverse;
   }
-  
+
   .trading-chart-container {
     background-color: $gray-800;
     border-color: $gray-700;
-    
+
     .chart-header {
       border-bottom-color: $gray-700;
     }
-    
+
     .chart-area {
       background-color: $gray-800;
       border-color: $gray-700;
     }
-    
+
     .chart-info {
       background-color: $gray-700;
       border-color: $gray-600;
@@ -553,7 +560,12 @@ main {
 }
 
 .loading-skeleton {
-  background: linear-gradient(90deg, $gray-200 25%, $gray-100 50%, $gray-200 75%);
+  background: linear-gradient(
+    90deg,
+    $gray-200 25%,
+    $gray-100 50%,
+    $gray-200 75%
+  );
   background-size: 200px 100%;
   animation: shimmer 1.5s infinite;
   border-radius: $radius-md;
@@ -566,7 +578,10 @@ main {
 }
 
 // Smooth transitions for all interactive elements
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   transition: all $transition-normal;
 }
 
@@ -584,8 +599,8 @@ button, input, select, textarea {
 ::-webkit-scrollbar-thumb {
   background: $gray-300;
   border-radius: $radius-sm;
-  
+
   &:hover {
     background: $gray-400;
   }
-} 
+}

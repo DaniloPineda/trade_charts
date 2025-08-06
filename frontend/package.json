@@ -12,10 +12,15 @@
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
     "lightweight-charts": "^5.0.8",
+    "mobx": "^6.13.7",
+    "mobx-react": "^9.2.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-jss": "^10.10.0",
     "react-scripts": "5.0.1",
+    "reflect-metadata": "^0.2.2",
     "sass": "^1.89.2",
+    "typedi": "^0.10.0",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },
@@ -23,12 +28,20 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dev": "concurrently \"npm:start\" \"..\\backend\\venv\\Scripts\\python ..\\backend\\manage.py runserver\"",
+    "lint:frontend": "eslint . --ext .ts,.tsx",
+    "format:frontend": "prettier --write .",
+    "lint:backend": "..\\backend\\venv\\Scripts\\python.exe -m flake8 ..\\backend\\apis",
+    "format:backend": "..\\backend\\venv\\Scripts\\python.exe -m black ..\\backend\\apis",
+    "lint": "npm run lint:frontend && npm run lint:backend",
+    "format": "npm run format:frontend && npm run format:backend"
   },
   "eslintConfig": {
     "extends": [
       "react-app",
-      "react-app/jest"
+      "react-app/jest",
+      "prettier"
     ]
   },
   "browserslist": {
@@ -42,5 +55,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2"
   }
 }

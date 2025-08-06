@@ -1,122 +1,126 @@
-@import 'variables';
-@import 'mixins';
+@use 'sass:color';
+@use 'variables';
+@use 'mixins';
 
 // Enhanced Button Styles
 .btn {
-  @include button-base;
+  @include mixins.button-base;
 
   &-primary {
-    @include button-primary;
+    @include mixins.button-primary;
   }
 
   &-secondary {
-    @include button-secondary;
+    @include mixins.button-secondary;
   }
 
   &-ghost {
-    @include button-ghost;
+    @include mixins.button-ghost;
   }
 
   &-success {
-    @include button-base;
-    background-color: $success-color;
-    color: $white;
+    @include mixins.button-base;
+    background-color: variables.$success-color;
+    color: variables.$white;
 
     &:hover:not(:disabled) {
-      background-color: darken($success-color, 10%);
+      background-color: color.adjust(
+        variables.$success-color,
+        $lightness: -10%
+      );
       transform: translateY(-1px);
-      box-shadow: $shadow-md;
+      box-shadow: variables.$shadow-md;
     }
   }
 
   &-danger {
-    @include button-base;
-    background-color: $danger-color;
-    color: $white;
+    @include mixins.button-base;
+    background-color: variables.$danger-color;
+    color: variables.$white;
 
     &:hover:not(:disabled) {
-      background-color: darken($danger-color, 10%);
+      background-color: color.adjust(variables.$danger-color, $lightness: -10%);
       transform: translateY(-1px);
-      box-shadow: $shadow-md;
+      box-shadow: variables.$shadow-md;
     }
   }
 
   &-sm {
-    padding: $spacing-xs $spacing-md;
-    font-size: $font-size-sm;
+    padding: variables.$spacing-xs variables.$spacing-md;
+    font-size: variables.$font-size-sm;
   }
 
   &-lg {
-    padding: $spacing-md $spacing-xl;
-    font-size: $font-size-lg;
+    padding: variables.$spacing-md variables.$spacing-xl;
+    font-size: variables.$font-size-lg;
   }
 }
 
 // Enhanced Input Styles
 .input {
-  @include input-base;
+  @include mixins.input-base;
 
   &-sm {
-    padding: $spacing-xs $spacing-sm;
-    font-size: $font-size-sm;
+    padding: variables.$spacing-xs variables.$spacing-sm;
+    font-size: variables.$font-size-sm;
   }
 
   &-lg {
-    padding: $spacing-md $spacing-lg;
-    font-size: $font-size-lg;
+    padding: variables.$spacing-md variables.$spacing-lg;
+    font-size: variables.$font-size-lg;
   }
 
   &-error {
-    border-color: $danger-color;
+    border-color: variables.$danger-color;
 
     &:focus {
-      border-color: $danger-color;
-      box-shadow: 0 0 0 3px rgba($danger-color, 0.1);
+      border-color: variables.$danger-color;
+      box-shadow: 0 0 0 3px rgba(variables.$danger-color, 0.1);
     }
   }
 
   &-success {
-    border-color: $success-color;
+    border-color: variables.$success-color;
 
     &:focus {
-      border-color: $success-color;
-      box-shadow: 0 0 0 3px rgba($success-color, 0.1);
+      border-color: variables.$success-color;
+      box-shadow: 0 0 0 3px rgba(variables.$success-color, 0.1);
     }
   }
 }
 
 // Card Components
 .card {
-  @include card-base;
-  padding: $spacing-lg;
+  @include mixins.card-base;
+  padding: variables.$spacing-lg;
 
   &-header {
-    @include flex-between;
-    margin-bottom: $spacing-lg;
-    padding-bottom: $spacing-md;
-    border-bottom: 1px solid $border-light;
+    @include mixins.flex-between;
+    margin-bottom: variables.$spacing-lg;
+    padding-bottom: variables.$spacing-md;
+    border-bottom: 1px solid variables.$border-light;
 
     .card-title {
-      @include heading-3;
+      @include mixins.heading-3;
       margin: 0;
     }
 
     .card-subtitle {
-      @include caption;
-      color: $text-muted;
-      margin-top: $spacing-xs;
+      @include mixins.caption;
+      color: variables.$text-muted;
+      margin-top: variables.$spacing-xs;
     }
   }
 
   &-body {
-    @include body-text;
+    @include mixins.body-text;
   }
 
   &-footer {
-    margin-top: $spacing-lg;
-    padding-top: $spacing-md;
-    border-top: 1px solid $border-light;
-    @include flex-between;
+    margin-top: variables.$spacing-lg;
+    padding-top: variables.$spacing-md;
+    border-top: 1px solid variables.$border-light;
+    @include mixins.flex-between;
   }
 }
 
@@ -124,68 +128,68 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: $spacing-xs $spacing-sm;
-  border-radius: $radius-sm;
-  font-size: $font-size-xs;
-  font-weight: $font-weight-medium;
+  padding: variables.$spacing-xs variables.$spacing-sm;
+  border-radius: variables.$radius-sm;
+  font-size: variables.$font-size-xs;
+  font-weight: variables.$font-weight-medium;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 
   &-primary {
-    background-color: rgba($primary-color, 0.1);
-    color: $primary-color;
+    background-color: rgba(variables.$primary-color, 0.1);
+    color: variables.$primary-color;
   }
 
   &-success {
-    background-color: rgba($success-color, 0.1);
-    color: $success-color;
+    background-color: rgba(variables.$success-color, 0.1);
+    color: variables.$success-color;
   }
 
   &-danger {
-    background-color: rgba($danger-color, 0.1);
-    color: $danger-color;
+    background-color: rgba(variables.$danger-color, 0.1);
+    color: variables.$danger-color;
   }
 
   &-warning {
-    background-color: rgba($warning-color, 0.1);
-    color: $warning-color;
+    background-color: rgba(variables.$warning-color, 0.1);
+    color: variables.$warning-color;
   }
 
   &-info {
-    background-color: rgba($info-color, 0.1);
-    color: $info-color;
+    background-color: rgba(variables.$info-color, 0.1);
+    color: variables.$info-color;
   }
 }
 
 // Alert Components
 .alert {
-  padding: $spacing-md;
-  border-radius: $radius-md;
+  padding: variables.$spacing-md;
+  border-radius: variables.$radius-md;
   border: 1px solid;
-  margin-bottom: $spacing-md;
+  margin-bottom: variables.$spacing-md;
 
   &-info {
-    background-color: rgba($info-color, 0.1);
-    border-color: $info-color;
-    color: darken($info-color, 20%);
+    background-color: rgba(variables.$info-color, 0.1);
+    border-color: variables.$info-color;
+    color: color.adjust(variables.$info-color, $lightness: -20%);
   }
 
   &-success {
-    background-color: rgba($success-color, 0.1);
-    border-color: $success-color;
-    color: darken($success-color, 20%);
+    background-color: rgba(variables.$success-color, 0.1);
+    border-color: variables.$success-color;
+    color: color.adjust(variables.$success-color, $lightness: -20%);
   }
 
   &-warning {
-    background-color: rgba($warning-color, 0.1);
-    border-color: $warning-color;
-    color: darken($warning-color, 20%);
+    background-color: rgba(variables.$warning-color, 0.1);
+    border-color: variables.$warning-color;
+    color: color.adjust(variables.$warning-color, $lightness: -20%);
   }
 
   &-danger {
-    background-color: rgba($danger-color, 0.1);
-    border-color: $danger-color;
-    color: darken($danger-color, 20%);
+    background-color: rgba(variables.$danger-color, 0.1);
+    border-color: variables.$danger-color;
+    color: color.adjust(variables.$danger-color, $lightness: -20%);
   }
 }
 
@@ -194,9 +198,9 @@
   display: inline-block;
   width: 20px;
   height: 20px;
-  border: 2px solid $gray-300;
+  border: 2px solid variables.$gray-300;
   border-radius: 50%;
-  border-top-color: $primary-color;
+  border-top-color: variables.$primary-color;
   animation: spin 1s ease-in-out infinite;
 
   &-sm {
@@ -229,16 +233,16 @@
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
-    background-color: $gray-800;
-    color: $white;
-    padding: $spacing-xs $spacing-sm;
-    border-radius: $radius-sm;
-    font-size: $font-size-xs;
+    background-color: variables.$gray-800;
+    color: variables.$white;
+    padding: variables.$spacing-xs variables.$spacing-sm;
+    border-radius: variables.$radius-sm;
+    font-size: variables.$font-size-xs;
     white-space: nowrap;
     opacity: 0;
     visibility: hidden;
-    transition: all $transition-normal;
-    z-index: $z-tooltip;
+    transition: all variables.$transition-normal;
+    z-index: variables.$z-tooltip;
   }
 
   &:hover::after {
@@ -250,20 +254,20 @@
 // Divider
 .divider {
   height: 1px;
-  background-color: $border-light;
-  margin: $spacing-md 0;
+  background-color: variables.$border-light;
+  margin: variables.$spacing-md 0;
 
   &-vertical {
     width: 1px;
     height: auto;
-    margin: 0 $spacing-md;
+    margin: 0 variables.$spacing-md;
   }
 }
 
 // Grid System
 .grid {
   display: grid;
-  gap: $spacing-lg;
+  gap: variables.$spacing-lg;
 
   &-cols-1 {
     grid-template-columns: repeat(1, 1fr);
@@ -281,7 +285,7 @@
     grid-template-columns: repeat(4, 1fr);
   }
 
-  @include mobile {
+  @include mixins.mobile {
     grid-template-columns: 1fr !important;
   }
 }
@@ -298,109 +302,109 @@
 }
 
 .text-primary {
-  color: $primary-color;
+  color: variables.$primary-color;
 }
 .text-success {
-  color: $success-color;
+  color: variables.$success-color;
 }
 .text-danger {
-  color: $danger-color;
+  color: variables.$danger-color;
 }
 .text-warning {
-  color: $warning-color;
+  color: variables.$warning-color;
 }
 .text-muted {
-  color: $text-muted;
+  color: variables.$text-muted;
 }
 
 .bg-primary {
-  background-color: $primary-color;
+  background-color: variables.$primary-color;
 }
 .bg-success {
-  background-color: $success-color;
+  background-color: variables.$success-color;
 }
 .bg-danger {
-  background-color: $danger-color;
+  background-color: variables.$danger-color;
 }
 .bg-warning {
-  background-color: $warning-color;
+  background-color: variables.$warning-color;
 }
 .bg-light {
-  background-color: $gray-100;
+  background-color: variables.$gray-100;
 }
 
 .rounded {
-  border-radius: $radius-md;
+  border-radius: variables.$radius-md;
 }
 .rounded-sm {
-  border-radius: $radius-sm;
+  border-radius: variables.$radius-sm;
 }
 .rounded-lg {
-  border-radius: $radius-lg;
+  border-radius: variables.$radius-lg;
 }
 .rounded-full {
   border-radius: 9999px;
 }
 
 .shadow-sm {
-  box-shadow: $shadow-sm;
+  box-shadow: variables.$shadow-sm;
 }
 .shadow-md {
-  box-shadow: $shadow-md;
+  box-shadow: variables.$shadow-md;
 }
 .shadow-lg {
-  box-shadow: $shadow-lg;
+  box-shadow: variables.$shadow-lg;
 }
 .shadow-xl {
-  box-shadow: $shadow-xl;
+  box-shadow: variables.$shadow-xl;
 }
 
 .m-0 {
   margin: 0;
 }
 .m-1 {
-  margin: $spacing-xs;
+  margin: variables.$spacing-xs;
 }
 .m-2 {
-  margin: $spacing-sm;
+  margin: variables.$spacing-sm;
 }
 .m-3 {
-  margin: $spacing-md;
+  margin: variables.$spacing-md;
 }
 .m-4 {
-  margin: $spacing-lg;
+  margin: variables.$spacing-lg;
 }
 .m-5 {
-  margin: $spacing-xl;
+  margin: variables.$spacing-xl;
 }
 
 .p-0 {
   padding: 0;
 }
 .p-1 {
-  padding: $spacing-xs;
+  padding: variables.$spacing-xs;
 }
 .p-2 {
-  padding: $spacing-sm;
+  padding: variables.$spacing-sm;
 }
 .p-3 {
-  padding: $spacing-md;
+  padding: variables.$spacing-md;
 }
 .p-4 {
-  padding: $spacing-lg;
+  padding: variables.$spacing-lg;
 }
 .p-5 {
-  padding: $spacing-xl;
+  padding: variables.$spacing-xl;
 }
 
 // Responsive utilities
-@include mobile {
+@include mixins.mobile {
   .hidden-mobile {
     display: none !important;
   }
 }
 
-@include desktop {
+@include mixins.desktop {
   .hidden-desktop {
     display: none !important;
   }

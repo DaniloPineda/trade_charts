@@ -4,6 +4,7 @@ import {
   CandlestickSeries,
   createChart,
   UTCTimestamp,
+  ISeriesApi,
 } from 'lightweight-charts';
 import SymbolSearch from './symbol-search/symbol-search';
 
@@ -30,6 +31,7 @@ function TradingChart(): JSX.Element {
   const [volume, setVolume] = useState<number | null>(null);
   const [high24h, setHigh24h] = useState<number | null>(null);
   const [low24h, setLow24h] = useState<number | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
 
   const timePeriods: TimePeriod[] = [
     '15m',
@@ -93,6 +95,8 @@ function TradingChart(): JSX.Element {
       wickUpColor: '#10b981',
       wickDownColor: '#ef4444',
     });
+
+    candleSeriesRef.current = candleSeries; // Guardamos la serie en el ref
 
     // El resto de la lógica para obtener y mostrar datos es la misma
     fetch(
@@ -166,6 +170,31 @@ function TradingChart(): JSX.Element {
         setIsLoading(false);
       });
 
+    // --- CONEXIÓN WEBSOCKET ---
+    console.log('Intentando conectar al WebSocket...');
+    const ws = new WebSocket(`ws://localhost:8000/ws/ticks/${ticker}/`);
+
+    ws.onopen = () => {
+      console.log('Conectado al WebSocket!');
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'ticker.update' && candleSeriesRef.current) {
+        console.log('Tick recibido:', data.payload);
+        // Usamos update() para añadir el nuevo punto sin recargar todo el gráfico
+        candleSeriesRef.current.update(data.payload);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('Desconectado del WebSocket.');
+    };
+
+    ws.onerror = (error) => {
+      console.error('Error de WebSocket:', error);
+    };
+
     const handleResize = () => {
       chart.applyOptions({ width: chartContainerRef.current!.clientWidth });
     };
@@ -173,6 +202,7 @@ function TradingChart(): JSX.Element {
     window.addEventListener('resize', handleResize);
 
     return () => {
+      ws.close();
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };

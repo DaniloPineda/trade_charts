@@ -1,6 +1,6 @@
-@import 'variables';
-@import 'mixins';
-@import 'components';
+@use 'variables';
+@use 'mixins';
+@use 'components';
 
 // Global Reset and Base Styles
 * {
@@ -15,11 +15,11 @@ html {
 }
 
 body {
-  font-family: $font-family-primary;
-  font-size: $font-size-base;
+  font-family: variables.$font-family-primary;
+  font-size: variables.$font-size-base;
   line-height: 1.6;
-  color: $text-primary;
-  background-color: $bg-secondary;
+  color: variables.$text-primary;
+  background-color: variables.$bg-secondary;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -27,19 +27,31 @@ body {
 // App Container
 .App {
   height: 100vh;
-  @include flex-column;
-  background: linear-gradient(135deg, $bg-secondary 0%, $white 100%);
+  @include mixins.flex-column;
+  background: linear-gradient(
+    135deg,
+    variables.$bg-secondary 0%,
+    variables.$white 100%
+  );
   overflow: hidden;
 
-  @include desktop {
-    background: linear-gradient(135deg, $gray-50 0%, $white 100%);
+  @include mixins.desktop {
+    background: linear-gradient(
+      135deg,
+      variables.$gray-50 0%,
+      variables.$white 100%
+    );
   }
 }
 
 // Header Styles
 .App-header {
-  background: linear-gradient(135deg, $bg-dark 0%, $gray-800 100%);
-  padding: $spacing-sm 0;
+  background: linear-gradient(
+    135deg,
+    variables.$bg-dark 0%,
+    variables.$gray-800 100%
+  );
+  padding: variables.$spacing-sm 0;
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
@@ -53,28 +65,28 @@ body {
     background:
       radial-gradient(
         circle at 20% 50%,
-        rgba($primary-color, 0.1) 0%,
+        rgba(variables.$primary-color, 0.1) 0%,
         transparent 50%
       ),
       radial-gradient(
         circle at 80% 20%,
-        rgba($secondary-color, 0.1) 0%,
+        rgba(variables.$secondary-color, 0.1) 0%,
         transparent 50%
       );
     pointer-events: none;
   }
 
   h1 {
-    @include heading-3;
-    color: $text-inverse;
+    @include mixins.heading-3;
+    color: variables.$text-inverse;
     text-align: center;
     position: relative;
     z-index: 1;
     margin-bottom: 0;
 
-    @include mobile {
-      font-size: $font-size-xl;
-      padding: 0 $spacing-md;
+    @include mixins.mobile {
+      font-size: variables.$font-size-xl;
+      padding: 0 variables.$spacing-md;
     }
   }
 
@@ -82,9 +94,9 @@ body {
   &::after {
     display: block;
     text-align: center;
-    @include caption;
-    color: rgba($white, 0.8);
-    margin-top: $spacing-xs;
+    @include mixins.caption;
+    color: rgba(variables.$white, 0.8);
+    margin-top: variables.$spacing-xs;
     position: relative;
     z-index: 1;
   }
@@ -93,63 +105,67 @@ body {
 // Main Content
 main {
   flex: 1;
-  padding: $spacing-xs;
+  padding: variables.$spacing-xs;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 
-  @include mobile {
-    padding: $spacing-xs;
+  @include mixins.mobile {
+    padding: variables.$spacing-xs;
   }
 
-  @include desktop {
-    padding: $spacing-sm;
+  @include mixins.desktop {
+    padding: variables.$spacing-sm;
     max-width: none;
   }
 }
 
 // Trading Chart Container
 .trading-chart-container {
-  @include card-hover;
-  padding: $spacing-sm;
+  @include mixins.card-hover;
+  padding: variables.$spacing-sm;
   margin-bottom: 0;
-  background: linear-gradient(135deg, $gray-800 0%, $gray-900 100%);
-  border: 1px solid $gray-700;
+  background: linear-gradient(
+    135deg,
+    variables.$gray-800 0%,
+    variables.$gray-900 100%
+  );
+  border: 1px solid variables.$gray-700;
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 
-  @include mobile {
-    padding: $spacing-xs;
+  @include mixins.mobile {
+    padding: variables.$spacing-xs;
   }
 
-  @include desktop {
-    padding: $spacing-md;
+  @include mixins.desktop {
+    padding: variables.$spacing-md;
     margin: 0;
     height: 100%;
   }
 
   // Chart Header
   .chart-header {
-    @include flex-between;
-    margin-bottom: $spacing-xs;
-    padding-bottom: $spacing-xs;
-    border-bottom: 1px solid $gray-600;
+    @include mixins.flex-between;
+    margin-bottom: variables.$spacing-xs;
+    padding-bottom: variables.$spacing-xs;
+    border-bottom: 1px solid variables.$gray-600;
     flex-shrink: 0;
 
-    @include mobile {
-      @include flex-column;
-      gap: $spacing-xs;
+    @include mixins.mobile {
+      @include mixins.flex-column;
+      gap: variables.$spacing-xs;
       align-items: stretch;
     }
 
     .chart-title {
-      @include heading-3;
-      color: $white;
+      @include mixins.heading-3;
+      color: variables.$white;
       margin: 0;
-      font-weight: $font-weight-bold;
-      text-shadow: 0 2px 4px rgba($black, 0.3);
+      font-weight: variables.$font-weight-bold;
+      text-shadow: 0 2px 4px rgba(variables.$black, 0.3);
       position: relative;
 
       span {
@@ -157,117 +173,125 @@ main {
         &::before {
           content: '';
           position: absolute;
-          left: -$spacing-xs;
+          left: -(variables.$spacing-xs);
           top: 50%;
           transform: translateY(-50%);
           width: 2px;
           height: 24px;
-          background: linear-gradient(135deg, $primary-color, $secondary-color);
+          background: linear-gradient(
+            135deg,
+            variables.$primary-color,
+            variables.$secondary-color
+          );
           border-radius: 15px;
         }
       }
     }
 
     .chart-controls {
-      @include flex-center;
-      gap: $spacing-xs;
+      @include mixins.flex-center;
+      gap: variables.$spacing-xs;
 
-      @include mobile {
+      @include mixins.mobile {
         flex-direction: column;
-        gap: $spacing-xs;
+        gap: variables.$spacing-xs;
       }
     }
   }
 
   // Control Panel
   .control-panel {
-    background: linear-gradient(135deg, $gray-700 0%, $gray-800 100%);
-    border-radius: $radius-sm;
-    padding: $spacing-xs;
-    margin-bottom: $spacing-xs;
-    border: 1px solid $gray-600;
+    background: linear-gradient(
+      135deg,
+      variables.$gray-700 0%,
+      variables.$gray-800 100%
+    );
+    border-radius: variables.$radius-sm;
+    padding: variables.$spacing-xs;
+    margin-bottom: variables.$spacing-xs;
+    border: 1px solid variables.$gray-600;
     flex-shrink: 0;
 
     .control-row {
-      @include flex-between;
+      @include mixins.flex-between;
       align-items: center;
-      gap: $spacing-sm;
+      gap: variables.$spacing-sm;
 
-      @include mobile {
-        @include flex-column;
-        gap: $spacing-xs;
+      @include mixins.mobile {
+        @include mixins.flex-column;
+        gap: variables.$spacing-xs;
         align-items: stretch;
       }
 
       .control-group {
-        @include flex-center;
-        gap: $spacing-sm;
+        @include mixins.flex-center;
+        gap: variables.$spacing-sm;
 
         .control-label {
-          @include caption;
-          color: $gray-300;
-          font-weight: $font-weight-medium;
+          @include mixins.caption;
+          color: variables.$gray-300;
+          font-weight: variables.$font-weight-medium;
           white-space: nowrap;
         }
 
         .control-input {
-          @include input-base;
+          @include mixins.input-base;
           max-width: 120px;
-          padding: $spacing-xs $spacing-sm;
-          font-size: $font-size-sm;
-          background-color: $gray-600;
-          border-color: $gray-500;
-          color: $white;
+          padding: variables.$spacing-xs variables.$spacing-sm;
+          font-size: variables.$font-size-sm;
+          background-color: variables.$gray-600;
+          border-color: variables.$gray-500;
+          color: variables.$white;
 
           &:focus {
-            border-color: $primary-color;
-            background-color: $gray-600;
+            border-color: variables.$primary-color;
+            background-color: variables.$gray-600;
           }
 
           &::placeholder {
-            color: $gray-400;
+            color: variables.$gray-400;
           }
         }
 
         .control-select {
-          @include input-base;
+          @include mixins.input-base;
           max-width: 120px;
-          padding: $spacing-xs $spacing-sm;
-          font-size: $font-size-sm;
-          background-color: $gray-600;
-          border-color: $gray-500;
-          color: $white;
+          padding: variables.$spacing-xs variables.$spacing-sm;
+          font-size: variables.$font-size-sm;
+          background-color: variables.$gray-600;
+          border-color: variables.$gray-500;
+          color: variables.$white;
           cursor: pointer;
 
           &:focus {
-            border-color: $primary-color;
-            background-color: $gray-600;
+            border-color: variables.$primary-color;
+            background-color: variables.$gray-600;
           }
         }
       }
 
       .tool-buttons {
-        @include flex-center;
-        gap: $spacing-sm;
+        @include mixins.flex-center;
+        gap: variables.$spacing-sm;
 
         .tool-btn {
-          @include button-ghost;
-          padding: $spacing-xs $spacing-sm;
-          font-size: $font-size-sm;
-          background-color: $gray-600;
-          color: $gray-300;
-          border: 1px solid $gray-500;
+          @include mixins.button-ghost;
+          padding: variables.$spacing-xs variables.$spacing-sm;
+          font-size: variables.$font-size-sm;
+          background-color: variables.$gray-600;
+          color: variables.$gray-300;
+          border: 1px solid variables.$gray-500;
 
           &:hover {
-            background-color: $primary-color;
-            color: $white;
-            border-color: $primary-color;
+            background-color: variables.$primary-color;
+            color: variables.$white;
+            border-color: variables.$primary-color;
           }
 
           &.active {
-            background-color: $primary-color;
-            color: $white;
-            border-color: $primary-color;
+            background-color: variables.$primary-color;
+            color: variables.$white;
+            border-color: variables.$primary-color;
           }
         }
       }
@@ -276,57 +300,57 @@ main {
 
   // Form Styles
   .ticker-form {
-    @include flex-center;
-    gap: $spacing-md;
+    @include mixins.flex-center;
+    gap: variables.$spacing-md;
 
-    @include mobile {
+    @include mixins.mobile {
       flex-direction: column;
-      gap: $spacing-sm;
+      gap: variables.$spacing-sm;
     }
 
     .ticker-input {
-      @include input-base;
+      @include mixins.input-base;
       max-width: 120px;
       text-transform: uppercase;
-      font-weight: $font-weight-medium;
-      background-color: $white;
-      border-color: $gray-300;
-      color: $text-primary;
-      padding: $spacing-xs $spacing-sm;
-      font-size: $font-size-sm;
+      font-weight: variables.$font-weight-medium;
+      background-color: variables.$white;
+      border-color: variables.$gray-300;
+      color: variables.$text-primary;
+      padding: variables.$spacing-xs variables.$spacing-sm;
+      font-size: variables.$font-size-sm;
 
-      @include mobile {
+      @include mixins.mobile {
         max-width: 100%;
       }
 
       &:focus {
-        border-color: $primary-color;
-        box-shadow: 0 0 0 3px rgba($primary-color, 0.2);
-        background-color: $white;
+        border-color: variables.$primary-color;
+        box-shadow: 0 0 0 3px rgba(variables.$primary-color, 0.2);
+        background-color: variables.$white;
       }
 
       &::placeholder {
-        color: $gray-500;
+        color: variables.$gray-500;
       }
     }
 
     .load-button {
-      @include button-primary;
+      @include mixins.button-primary;
       min-width: 80px;
       height: 36px;
-      font-weight: $font-weight-semibold;
+      font-weight: variables.$font-weight-semibold;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      font-size: $font-size-sm;
+      font-size: variables.$font-size-sm;
 
-      @include mobile {
+      @include mixins.mobile {
         width: 100%;
         height: 48px;
       }
 
       &:hover {
-        box-shadow: $shadow-lg;
-        background-color: $primary-dark;
+        box-shadow: variables.$shadow-lg;
+        background-color: variables.$primary-dark;
       }
 
       &:active {
@@ -338,15 +362,15 @@ main {
   // Chart Area
   .chart-area {
     position: relative;
-    background: $white;
-    border-radius: $radius-md;
+    background: variables.$white;
+    border-radius: variables.$radius-md;
     overflow: hidden;
-    box-shadow: $shadow-md;
-    border: 1px solid $gray-600;
+    box-shadow: variables.$shadow-md;
+    border: 1px solid variables.$gray-600;
     flex: 1;
     min-height: 0;
 
-    @include desktop {
+    @include mixins.desktop {
       min-height: 200px;
     }
 
@@ -356,16 +380,16 @@ main {
       height: 100%;
       min-height: 300px;
 
-      @include mobile {
+      @include mixins.mobile {
         min-height: 250px;
       }
 
-      @include desktop {
+      @include mixins.desktop {
         min-height: 400px;
       }
 
       // Custom scrollbar for chart
-      @include scrollbar;
+      @include mixins.scrollbar;
     }
 
     // Chart loading state
@@ -377,9 +401,9 @@ main {
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba($white, 0.8);
+        background: rgba(variables.$white, 0.8);
         z-index: 10;
-        @include flex-center;
+        @include mixins.flex-center;
       }
 
       &::after {
@@ -389,100 +413,108 @@ main {
         left: 50%;
         transform: translate(-50%, -50%);
         z-index: 11;
-        @include body-text;
-        color: $text-secondary;
+        @include mixins.body-text;
+        color: variables.$text-secondary;
       }
     }
   }
 
   // Chart Info Panel
   .chart-info {
-    @include flex-between;
-    margin-top: $spacing-xs;
-    padding: $spacing-xs;
-    background: linear-gradient(135deg, $gray-700 0%, $gray-800 100%);
-    border-radius: $radius-sm;
-    border: 1px solid $gray-600;
+    @include mixins.flex-between;
+    margin-top: variables.$spacing-xs;
+    padding: variables.$spacing-xs;
+    background: linear-gradient(
+      135deg,
+      variables.$gray-700 0%,
+      variables.$gray-800 100%
+    );
+    border-radius: variables.$radius-sm;
+    border: 1px solid variables.$gray-600;
     flex-shrink: 0;
 
-    @include mobile {
-      @include flex-column;
-      gap: $spacing-xs;
+    @include mixins.mobile {
+      @include mixins.flex-column;
+      gap: variables.$spacing-xs;
       text-align: center;
     }
 
     .info-item {
-      @include flex-center;
-      gap: $spacing-sm;
+      @include mixins.flex-center;
+      gap: variables.$spacing-sm;
 
       .label {
-        @include caption;
-        color: $gray-300;
-        font-weight: $font-weight-medium;
+        @include mixins.caption;
+        color: variables.$gray-300;
+        font-weight: variables.$font-weight-medium;
       }
 
       .value {
-        @include body-text;
-        font-weight: $font-weight-semibold;
-        color: $white;
+        @include mixins.body-text;
+        font-weight: variables.$font-weight-semibold;
+        color: variables.$white;
       }
 
       &.positive .value {
-        color: $success-color;
-        text-shadow: 0 1px 2px rgba($success-color, 0.3);
+        color: variables.$success-color;
+        text-shadow: 0 1px 2px rgba(variables.$success-color, 0.3);
       }
 
       &.negative .value {
-        color: $danger-color;
-        text-shadow: 0 1px 2px rgba($danger-color, 0.3);
+        color: variables.$danger-color;
+        text-shadow: 0 1px 2px rgba(variables.$danger-color, 0.3);
       }
     }
   }
 
   // Time Period Bar
   .time-period-bar {
-    background: linear-gradient(135deg, $gray-700 0%, $gray-800 100%);
-    border-radius: $radius-sm;
-    padding: $spacing-xs;
-    margin-top: $spacing-xs;
-    border: 1px solid $gray-600;
+    background: linear-gradient(
+      135deg,
+      variables.$gray-700 0%,
+      variables.$gray-800 100%
+    );
+    border-radius: variables.$radius-sm;
+    padding: variables.$spacing-xs;
+    margin-top: variables.$spacing-xs;
+    border: 1px solid variables.$gray-600;
     flex-shrink: 0;
 
     .period-buttons {
-      @include flex-center;
-      gap: $spacing-xs;
+      @include mixins.flex-center;
+      gap: variables.$spacing-xs;
       flex-wrap: wrap;
 
       .period-btn {
-        @include button-ghost;
-        padding: $spacing-xs $spacing-sm;
-        font-size: $font-size-sm;
-        font-weight: $font-weight-medium;
-        background-color: $gray-600;
-        color: $gray-300;
-        border: 1px solid $gray-500;
-        border-radius: $radius-sm;
+        @include mixins.button-ghost;
+        padding: variables.$spacing-xs variables.$spacing-sm;
+        font-size: variables.$font-size-sm;
+        font-weight: variables.$font-weight-medium;
+        background-color: variables.$gray-600;
+        color: variables.$gray-300;
+        border: 1px solid variables.$gray-500;
+        border-radius: variables.$radius-sm;
         min-width: 40px;
         text-align: center;
 
         &:hover {
-          background-color: $primary-color;
-          color: $white;
-          border-color: $primary-color;
+          background-color: variables.$primary-color;
+          color: variables.$white;
+          border-color: variables.$primary-color;
           transform: translateY(-1px);
         }
 
         &.active {
-          background-color: $primary-color;
-          color: $white;
-          border-color: $primary-color;
-          box-shadow: 0 2px 4px rgba($primary-color, 0.3);
+          background-color: variables.$primary-color;
+          color: variables.$white;
+          border-color: variables.$primary-color;
+          box-shadow: 0 2px 4px rgba(variables.$primary-color, 0.3);
         }
 
-        @include mobile {
+        @include mixins.mobile {
           min-width: 35px;
-          font-size: $font-size-xs;
-          padding: $spacing-xs;
+          font-size: variables.$font-size-xs;
+          padding: variables.$spacing-xs;
         }
       }
     }
@@ -490,26 +522,26 @@ main {
 }
 
 // Responsive Design
-@media (max-width: $breakpoint-sm) {
+@media (max-width: variables.$breakpoint-sm) {
   .App-header {
-    padding: $spacing-lg 0;
+    padding: variables.$spacing-lg 0;
 
     h1 {
-      font-size: $font-size-2xl;
+      font-size: variables.$font-size-2xl;
     }
   }
 
   main {
-    padding: $spacing-lg $spacing-md;
+    padding: variables.$spacing-lg variables.$spacing-md;
   }
 }
 
-@include desktop {
+@include mixins.desktop {
   .App {
     .trading-chart-container {
       .chart-header {
         .chart-title {
-          font-size: $font-size-2xl;
+          font-size: variables.$font-size-2xl;
         }
       }
 
@@ -525,26 +557,26 @@ main {
 // Dark mode support (optional)
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: $gray-900;
-    color: $text-inverse;
+    background-color: variables.$gray-900;
+    color: variables.$text-inverse;
   }
 
   .trading-chart-container {
-    background-color: $gray-800;
-    border-color: $gray-700;
+    background-color: variables.$gray-800;
+    border-color: variables.$gray-700;
 
     .chart-header {
-      border-bottom-color: $gray-700;
+      border-bottom-color: variables.$gray-700;
     }
 
     .chart-area {
-      background-color: $gray-800;
-      border-color: $gray-700;
+      background-color: variables.$gray-800;
+      border-color: variables.$gray-700;
     }
 
     .chart-info {
-      background-color: $gray-700;
-      border-color: $gray-600;
+      background-color: variables.$gray-700;
+      border-color: variables.$gray-600;
     }
   }
 }
@@ -562,18 +594,18 @@ main {
 .loading-skeleton {
   background: linear-gradient(
     90deg,
-    $gray-200 25%,
-    $gray-100 50%,
-    $gray-200 75%
+    variables.$gray-200 25%,
+    variables.$gray-100 50%,
+    variables.$gray-200 75%
   );
   background-size: 200px 100%;
   animation: shimmer 1.5s infinite;
-  border-radius: $radius-md;
+  border-radius: variables.$radius-md;
 }
 
 // Focus styles for accessibility
 *:focus {
-  outline: 2px solid $primary-color;
+  outline: 2px solid variables.$primary-color;
   outline-offset: 2px;
 }
 
@@ -582,7 +614,7 @@ button,
 input,
 select,
 textarea {
-  transition: all $transition-normal;
+  transition: all variables.$transition-normal;
 }
 
 // Custom scrollbar for the entire app
@@ -592,15 +624,15 @@ textarea {
 }
 
 ::-webkit-scrollbar-track {
-  background: $gray-100;
-  border-radius: $radius-sm;
+  background: variables.$gray-100;
+  border-radius: variables.$radius-sm;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: $gray-300;
-  border-radius: $radius-sm;
+  background: variables.$gray-300;
+  border-radius: variables.$radius-sm;
 
   &:hover {
-    background: $gray-400;
+    background: variables.$gray-400;
   }
 }

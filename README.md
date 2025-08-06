@@ -24,18 +24,21 @@ Una aplicación moderna de gráficos de trading construida con React, TypeScript
 ## 📦 Instalación
 
 ### Prerrequisitos
+
 - Node.js (v16 o superior)
 - npm o yarn
 
 ### Pasos de Instalación
 
 1. **Clonar el repositorio**
+
 ```bash
 git clone https://github.com/tu-usuario/trading-charts.git
 cd trading-charts
 ```
 
 2. **Configurar el Backend**
+
 ```bash
 cd backend
 python -m venv venv
@@ -49,6 +52,7 @@ python manage.py runserver
 ```
 
 3. **Configurar el Frontend**
+
 ```bash
 cd frontend
 npm install
@@ -85,12 +89,14 @@ trading_charts/
 ## 🎨 Sistema de Diseño
 
 ### Paleta de Colores
+
 - **Primario**: Azul (#2563eb) - Confianza y estabilidad
 - **Secundario**: Verde (#10b981) - Crecimiento y éxito
 - **Éxito**: Verde (#10b981) - Movimientos positivos
 - **Peligro**: Rojo (#ef4444) - Movimientos negativos
 
 ### Características
+
 - **Tipografía**: Inter (Google Fonts)
 - **Espaciado**: Sistema modular de 8px
 - **Sombras**: Sistema de profundidad visual
@@ -99,15 +105,18 @@ trading_charts/
 ## 🔧 Uso
 
 ### Cambiar Símbolo
+
 1. Ingresa el símbolo en el campo de texto (ej: AAPL, TSLA, GOOGL)
 2. Haz clic en "Cargar"
 3. El gráfico se actualizará automáticamente
 
 ### Cambiar Período
+
 - Haz clic en cualquier botón de período (15m, 1h, 1d, etc.)
 - El gráfico se ajustará al período seleccionado
 
 ### Herramientas de Análisis
+
 - **Indicadores**: Selecciona SMA, EMA, Bollinger Bands, RSI
 - **Período**: Configura el período del indicador
 - **Herramientas**: Líneas de tendencia, Fibonacci, medición, dibujo
@@ -115,6 +124,7 @@ trading_charts/
 ## 📱 Responsive Design
 
 La aplicación se adapta perfectamente a:
+
 - **Desktop**: Pantalla completa con controles optimizados
 - **Tablet**: Layout adaptativo con controles reorganizados
 - **Mobile**: Interfaz compacta con navegación táctil
@@ -137,7 +147,7 @@ La aplicación se adapta perfectamente a:
 - [ ] Múltiples timeframes
 - [ ] Exportación de gráficos
 
-## 🤝 Contribuir
+## 🤝 Contribuciones
 
 1. Fork el proyecto
 2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
@@ -152,8 +162,9 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más det
 ## 👨‍💻 Autor
 
 **Tu Nombre**
-- GitHub: [@tu-usuario](https://github.com/tu-usuario)
-- LinkedIn: [Tu LinkedIn](https://linkedin.com/in/tu-perfil)
+
+- GitHub: [@DaniloPineda](https://github.com/DaniloPineda)
+- LinkedIn: [Danilo Pineda](https://www.linkedin.com/in/danilopineda93/)
 
 ## 🙏 Agradecimientos
 
@@ -164,4 +175,4 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más det
 
 ---
 
-⭐ Si te gusta este proyecto, ¡dale una estrella en GitHub! 
+⭐ Si te gusta este proyecto, ¡dale una estrella en GitHub!

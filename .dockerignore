@@ -1,0 +1,21 @@
+# .dockerignore
+
+# Git files
+.git
+.gitignore
+
+# Docker files
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Python backend specifics
+backend/venv
+backend/__pycache__
+backend/*.pyc
+
+# Node frontend specifics
+frontend/node_modules
+frontend/build
+frontend/.npm
+npm-debug.log

@@ -20,11 +20,18 @@ services:
 
   # --- Servicio del Frontend (React) ---
   frontend:
-    build: ./frontend # Construye la imagen desde la carpeta ./frontend
+    build: ./frontend
     container_name: trade_charts_frontend
     volumes:
-      - ./frontend:/app/frontend # Sincroniza tu código para hot-reloading de React
+      # Sincroniza tu código para hot-reloading
+      - ./frontend:/app/frontend
+      # Crea un "volumen anónimo" para node_modules, aislando la carpeta
+      # del contenedor y evitando que sea sobrescrita por el montaje anterior.
+      - /app/frontend/node_modules
     ports:
       - "3000:3000"
+    environment:
+      # Ayuda a que el hot-reloading de React funcione mejor con Docker
+      - CHOKIDAR_USEPOLLING=true
     depends_on:
-      - backend # Inicia el frontend después de que el backend esté listo
+      - backend

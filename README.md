@@ -78,8 +78,7 @@ trading_charts/
 │   ├── package.json
 │   └── README.md
 ├── backend/                  # API Django
-│   ├── apis/               # Aplicaciones Django
-│   ├── trade_charts/       # Configuración principal
+│   ├── api/               # Aplicaciones Django
 │   ├── manage.py
 │   ├── requirements.txt
 │   └── README.md

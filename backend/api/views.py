@@ -4,27 +4,76 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 import time
 import os
-import json
+import random
+from datetime import datetime, timedelta
 
 FINNHUB_API_TOKEN = os.environ.get(
     "FINNHUB_API_TOKEN", "d292e3pr01qhoen9cd70d292e3pr01qhoen9cd7g"
 )
-MOCK_DATA_PATH = os.path.join(settings.BASE_DIR, "apis", "mocks", "mock_data.json")
 
+# --- Generador de Datos Dinámico (reemplaza tu generador estático) ---
+def generate_dynamic_mock_data(period='1d', ticker='AAPL'):
+    now = datetime.utcnow()
+    data = []
+    base_price = 150.0
+    
+    # Define la cantidad de velas y el intervalo de tiempo
+    if period == '15m':
+        points = 96  # 4 velas por hora, 24 horas
+        delta = timedelta(minutes=15)
+    elif period == '1h':
+        points = 72  # 72 horas (3 días)
+        delta = timedelta(hours=1)
+    elif period == '1d':
+        points = 252 # 1 año de días de trading
+        delta = timedelta(days=1)
+    elif period == '1w':
+        points = 156 # 3 años de datos semanales
+        delta = timedelta(weeks=1)
+    else: # Por defecto, si el periodo es '1m', '3m', '1y', etc.
+        points = 252
+        delta = timedelta(days=1)
 
+    current_time = now - (points * delta)
+    price = base_price
+
+    for _ in range(points):
+        # Avanza el tiempo, saltando fines de semana para datos diarios y semanales
+        current_time += delta
+        if delta >= timedelta(days=1) and current_time.weekday() >= 5:
+            continue
+
+        open_price = round(price + random.uniform(-0.5, 0.5), 2)
+        volatility = random.uniform(0.01, 0.04)
+        price_change = random.gauss(0.0005, 0.015)
+        close_price = round(open_price * (1 + price_change), 2)
+        
+        high_price = round(max(open_price, close_price) * (1 + volatility), 2)
+        low_price = round(min(open_price, close_price) * (1 - volatility), 2)
+
+        timestamp = int(current_time.replace(microsecond=0).timestamp())
+
+        data.append({
+            "time": timestamp,
+            "open": open_price,
+            "high": high_price,
+            "low": low_price,
+            "close": close_price
+        })
+        price = close_price
+        
+    return data
 class MarketDataView(APIView):
     def get(self, request):
         ticker = request.query_params.get("ticker", "AAPL")
+        period = request.query_params.get('period', '1d')
 
         if not ticker:
             return Response({"error": "Ticker symbol is required"}, status=400)
 
         try:
-            # Abrimos el archivo JSON y lo cargamos en una variable de Python
-            with open(MOCK_DATA_PATH, "r") as f:
-                mock_data = json.load(f)
-
-            # Devolvemos los datos con un código de éxito 200
+            # Llama a la nueva función para generar datos dinámicamente
+            mock_data = generate_dynamic_mock_data(period, ticker)
             return Response(mock_data)
 
             end_time = int(time.time())

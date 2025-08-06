@@ -13,6 +13,7 @@ Backend Django para la aplicación de gráficos de trading. Proporciona APIs RES
 ## 📦 Instalación
 
 ### Prerrequisitos
+
 - Python 3.8+
 - pip
 - virtualenv (recomendado)
@@ -20,12 +21,14 @@ Backend Django para la aplicación de gráficos de trading. Proporciona APIs RES
 ### Pasos de Instalación
 
 1. **Crear entorno virtual**
+
 ```bash
 cd backend
 python -m venv venv
 ```
 
 2. **Activar entorno virtual**
+
 ```bash
 # Windows
 venv\Scripts\activate
@@ -35,21 +38,25 @@ source venv/bin/activate
 ```
 
 3. **Instalar dependencias**
+
 ```bash
 pip install -r requirements.txt
 ```
 
 4. **Configurar base de datos**
+
 ```bash
 python manage.py migrate
 ```
 
 5. **Crear superusuario (opcional)**
+
 ```bash
 python manage.py createsuperuser
 ```
 
 6. **Ejecutar servidor de desarrollo**
+
 ```bash
 python manage.py runserver
 ```
@@ -60,10 +67,9 @@ El servidor estará disponible en `http://localhost:8000`
 
 ```
 backend/
-├── apis/                    # Aplicaciones Django
+├── api/                    # Aplicaciones Django
 │   ├── market_data/        # API para datos de mercado
 │   └── users/              # API para usuarios
-├── trade_charts/           # Configuración principal
 │   ├── settings.py
 │   ├── urls.py
 │   └── wsgi.py
@@ -75,11 +81,13 @@ backend/
 ## 🔧 APIs Disponibles
 
 ### Datos de Mercado
+
 - `GET /api/market-data/` - Obtener datos de velas
 - `GET /api/market-data/{symbol}/` - Datos específicos de un símbolo
 - `GET /api/market-data/{symbol}/history/` - Historial de precios
 
 ### Usuarios
+
 - `POST /api/auth/register/` - Registro de usuarios
 - `POST /api/auth/login/` - Inicio de sesión
 - `GET /api/auth/profile/` - Perfil del usuario
@@ -105,6 +113,7 @@ python manage.py test
 ## 📊 Base de Datos
 
 ### Modelos Principales
+
 - **Symbol**: Símbolos de trading (AAPL, TSLA, etc.)
 - **CandleData**: Datos de velas japonesas
 - **User**: Usuarios del sistema
@@ -113,17 +122,19 @@ python manage.py test
 ## 🚀 Despliegue
 
 ### Desarrollo
+
 ```bash
 python manage.py runserver
 ```
 
 ### Producción
+
 ```bash
 python manage.py collectstatic
 python manage.py migrate
-gunicorn trade_charts.wsgi:application
+gunicorn wsgi:application
 ```
 
 ## 📝 Licencia
 
-MIT License - ver archivo LICENSE para más detalles. 
+MIT License - ver archivo LICENSE para más detalles.

@@ -41,7 +41,7 @@ La aplicación estará disponible en `http://localhost:3000`
 frontend/
 ├── public/                  # Archivos públicos
 │   ├── index.html
-│   └── favicon.ico
+│   └── favicon.png
 ├── src/
 │   ├── components/         # Componentes React
 │   │   └── trading-charts.tsx

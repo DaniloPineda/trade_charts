@@ -51,7 +51,7 @@ function TradingChart(): JSX.Element {
 
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
-      height: window.innerWidth >= 1024 ? window.innerHeight - 150 : 400,
+      height: window.innerWidth >= 1024 ? window.innerHeight - 252 : 400,
       layout: {
         background: { color: '#ffffff' },
         textColor: '#374151',
@@ -80,7 +80,7 @@ function TradingChart(): JSX.Element {
       timeScale: {
         borderColor: '#e5e7eb',
         timeVisible: true,
-        secondsVisible: false,
+        secondsVisible: true,
       },
     });
 

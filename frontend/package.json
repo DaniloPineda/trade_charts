@@ -25,17 +25,19 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "dev": "concurrently \"npm run ui\" \"npm run back\"",
+    "ui": "react-scripts start",
+    "back": "..\\backend\\venv\\Scripts\\python.exe ..\\backend\\manage.py runserver",
+    "mock": "..\\backend\\venv\\Scripts\\python.exe ..\\backend\\\\mocks\\generate_mock.py",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "dev": "concurrently \"npm:start\" \"..\\backend\\venv\\Scripts\\python ..\\backend\\manage.py runserver\"",
-    "lint:frontend": "eslint . --ext .ts,.tsx",
-    "format:frontend": "prettier --write .",
-    "lint:backend": "..\\backend\\venv\\Scripts\\python.exe -m flake8 ..\\backend\\apis",
-    "format:backend": "..\\backend\\venv\\Scripts\\python.exe -m black ..\\backend\\apis",
     "lint": "npm run lint:frontend && npm run lint:backend",
-    "format": "npm run format:frontend && npm run format:backend"
+    "lint:frontend": "eslint . --ext .ts,.tsx",
+    "lint:backend": "..\\backend\\venv\\Scripts\\python.exe -m flake8 ..\\backend\\api",
+    "format:frontend": "prettier --write .",
+    "format": "npm run format:frontend && npm run format:backend",
+    "format:backend": "..\\backend\\venv\\Scripts\\python.exe -m black ..\\backend\\api"
   },
   "eslintConfig": {
     "extends": [

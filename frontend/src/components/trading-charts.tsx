@@ -172,7 +172,9 @@ function TradingChart(): JSX.Element {
 
     // --- CONEXIÓN WEBSOCKET ---
     console.log('Intentando conectar al WebSocket...');
-    const ws = new WebSocket(`ws://localhost:8000/ws/ticks/${ticker}/`);
+    const ws = new WebSocket(
+      `ws://${window.location.host}/ws/ticks/${ticker}/`
+    );
 
     ws.onopen = () => {
       console.log('Conectado al WebSocket!');

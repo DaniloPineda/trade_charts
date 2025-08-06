@@ -10,7 +10,7 @@ services:
   backend:
     build: ./backend # Le dice a Compose que construya la imagen desde la carpeta ./backend
     container_name: trade_charts_backend
-    command: python manage.py runserver 0.0.0.0:8000 # Comando para correr el servidor de desarrollo
+    command: daphne -b 0.0.0.0 -p 8000 asgi:application
     volumes:
       - ./backend:/app/backend # Sincroniza tu código local con el del contenedor para hot-reloading
     ports:
@@ -35,3 +35,15 @@ services:
       - CHOKIDAR_USEPOLLING=true
     depends_on:
       - backend
+
+  # --- Nuevo servicio para el simulador de Ticks ---
+  # ticker:
+  #   build: ./backend
+  #   container_name: trade_charts_ticker
+  #   # Llama directamente al comando de management
+  #   command: python manage.py start_ticker
+  #   volumes:
+  #     - ./backend:/app/backend
+  #   depends_on:
+  #     - redis
+  #     - backend

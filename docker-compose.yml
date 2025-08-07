@@ -7,16 +7,22 @@ services:
       - "6379:6379" # Mapeamos el puerto para poder conectarnos desde fuera si es necesario
 
   # --- Servicio del Backend (Django) ---
+
   backend:
-    build: ./backend # Le dice a Compose que construya la imagen desde la carpeta ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: trade_charts_backend
-    command: daphne -b 0.0.0.0 -p 8000 asgi:application
-    volumes:
-      - ./backend:/app/backend # Sincroniza tu código local con el del contenedor para hot-reloading
+    command: daphne -b 0.0.0.0 -p 8000 trade_charts.asgi:application
     ports:
-      - "8000:8000" # Mapea el puerto 8000 del contenedor a tu máquina local
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
     depends_on:
-      - redis # Le dice a Docker que inicie Redis ANTES que el backend
+      - redis
+    volumes:
+      - .:/app
+      - ./backend:/app/backend
 
   # --- Servicio del Frontend (React) ---
   frontend:
@@ -31,19 +37,21 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Ayuda a que el hot-reloading de React funcione mejor con Docker
       - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
     depends_on:
       - backend
 
   # --- Nuevo servicio para el simulador de Ticks ---
-  # ticker:
-  #   build: ./backend
-  #   container_name: trade_charts_ticker
-  #   # Llama directamente al comando de management
-  #   command: python manage.py start_ticker
-  #   volumes:
-  #     - ./backend:/app/backend
-  #   depends_on:
-  #     - redis
-  #     - backend
+  ticker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: trade_charts_ticker
+    # Llama directamente al comando de management
+    command: python manage.py start_ticker
+    volumes:
+      - ./backend:/app/backend
+    depends_on:
+      - redis
+      - backend

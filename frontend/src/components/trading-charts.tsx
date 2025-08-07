@@ -53,7 +53,7 @@ function TradingChart(): JSX.Element {
 
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
-      height: window.innerWidth >= 1024 ? window.innerHeight - 252 : 400,
+      height: window.innerWidth >= 1024 ? window.innerHeight - 150 : 400,
       layout: {
         background: { color: '#ffffff' },
         textColor: '#374151',
@@ -82,7 +82,7 @@ function TradingChart(): JSX.Element {
       timeScale: {
         borderColor: '#e5e7eb',
         timeVisible: true,
-        secondsVisible: true,
+        secondsVisible: false,
       },
     });
 
@@ -172,9 +172,7 @@ function TradingChart(): JSX.Element {
 
     // --- CONEXIÓN WEBSOCKET ---
     console.log('Intentando conectar al WebSocket...');
-    const ws = new WebSocket(
-      `ws://${window.location.host}/ws/ticks/${ticker}/`
-    );
+    const ws = new WebSocket(`ws://localhost:3000/ws/ticks/${ticker}/`);
 
     ws.onopen = () => {
       console.log('Conectado al WebSocket!');

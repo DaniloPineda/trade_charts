@@ -12,7 +12,7 @@ WORKDIR /app/backend
 
 # 4. Instalar dependencias
 # Copiamos solo el archivo de requerimientos primero para aprovechar el cache de Docker
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 5. Copiar el resto del código de la aplicación

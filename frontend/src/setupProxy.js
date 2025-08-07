@@ -1,8 +1,7 @@
-// frontend/src/setupProxy.js
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function (app) {
-  // Redirige las peticiones que empiezan con /api
+  // Proxy for standard API requests (HTTP)
   app.use(
     '/api',
     createProxyMiddleware({
@@ -11,12 +10,12 @@ module.exports = function (app) {
     })
   );
 
-  // Redirige las peticiones que empiezan con /ws
+  // Proxy for WebSocket requests
   app.use(
     '/ws',
     createProxyMiddleware({
       target: 'http://backend:8000',
-      ws: true, // Habilita el proxy para WebSockets
+      ws: true, // This is the key line to enable WebSockets!
     })
   );
 };

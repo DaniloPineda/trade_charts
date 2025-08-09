@@ -26,7 +26,14 @@ SECRET_KEY = "django-insecure-+zn6yr8$dqnfu!)f)ewk-@sv%a-b8$$yf$e!(*fxwi@g5w+zk!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'backend']
+
+ASGI_ALLOWED_HOSTS = ALLOWED_HOSTS
+
+# Confía en el encabezado X-Forwarded-Host que envía el proxy (NGINX)
+USE_X_FORWARDED_HOST = True
+# Confía en el encabezado que indica que la conexión es segura (para cuando uses HTTPS)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
@@ -138,6 +145,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:80",
 ]
 
 ASGI_APPLICATION = 'trade_charts.asgi.application'

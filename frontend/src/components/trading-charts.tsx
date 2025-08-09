@@ -1,14 +1,15 @@
 import React, { JSX, useEffect, useRef, useState } from 'react';
-// La importación de tipos puede cambiar ligeramente en v5, pero esto debería ser compatible.
 import {
   CandlestickSeries,
   createChart,
   UTCTimestamp,
   ISeriesApi,
+  IChartApi,
+  LineStyle,
 } from 'lightweight-charts';
 import SymbolSearch from './symbol-search/symbol-search';
 
-// La interfaz de datos sigue siendo la misma
+// Data interface for a single candlestick
 interface CandleData {
   time: UTCTimestamp;
   open: number;
@@ -17,43 +18,45 @@ interface CandleData {
   close: number;
 }
 
-type TimePeriod = '15m' | '1h' | '1d' | '1w' | '1m' | '3m' | '1y' | '3y';
+// Allowed time periods
+type TimePeriod = '1m' | '15m' | '1h' | '1d' | '1w' | '3m' | '1y' | '3y';
+const timePeriods: TimePeriod[] = [
+  '1m',
+  '15m',
+  '1h',
+  '1d',
+  '1w',
+  '3m',
+  '1y',
+  '3y',
+];
 
 function TradingChart(): JSX.Element {
+  const lastTimestampRef = useRef<number | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const [ticker, setTicker] = useState<string>('AAPL');
-  const [inputTicker, setInputTicker] = useState<string>('AAPL');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [lastPrice, setLastPrice] = useState<number | null>(null);
-  const [priceChange, setPriceChange] = useState<number | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1d');
-  const [activeTool, setActiveTool] = useState<string>('none');
-  const [volume, setVolume] = useState<number | null>(null);
-  const [high24h, setHigh24h] = useState<number | null>(null);
-  const [low24h, setLow24h] = useState<number | null>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const liveCandleRef = useRef<CandleData | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
 
-  const timePeriods: TimePeriod[] = [
-    '15m',
-    '1h',
-    '1d',
-    '1w',
-    '1m',
-    '3m',
-    '1y',
-    '3y',
-  ];
+  // Component State
+  const [ticker, setTicker] = useState<string>('AAPL');
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('1m');
+  const [activeTool, setActiveTool] = useState<string>('none');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // State for the info bar
+  const [lastPrice, setLastPrice] = useState<number | null>(null);
+  const [priceChange, setPriceChange] = useState<number | null>(null);
+  const [volume, setVolume] = useState<number | null>(null); // This will remain mock data
+  const [high24h, setHigh24h] = useState<number | null>(null);
+  const [low24h, setLow24h] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!chartContainerRef.current) {
-      return;
-    }
-
-    setIsLoading(true);
+    if (!chartContainerRef.current) return;
 
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
-      height: window.innerWidth >= 1024 ? window.innerHeight - 150 : 400,
+      height: window.innerWidth >= 1024 ? window.innerHeight - 300 : 400,
       layout: {
         background: { color: '#ffffff' },
         textColor: '#374151',
@@ -63,22 +66,11 @@ function TradingChart(): JSX.Element {
         horzLines: { color: '#e5e7eb' },
       },
       crosshair: {
-        mode: 1,
-        vertLine: {
-          color: '#2563eb',
-          width: 1,
-          style: 2,
-        },
-        horzLine: {
-          color: '#2563eb',
-          width: 1,
-          style: 2,
-        },
+        mode: 1, // Magnet mode
+        vertLine: { color: '#2563eb', width: 1, style: LineStyle.Dotted },
+        horzLine: { color: '#2563eb', width: 1, style: LineStyle.Dotted },
       },
-      rightPriceScale: {
-        borderColor: '#e5e7eb',
-        textColor: '#6b7280',
-      },
+      rightPriceScale: { borderColor: '#e5e7eb' },
       timeScale: {
         borderColor: '#e5e7eb',
         timeVisible: true,
@@ -86,8 +78,6 @@ function TradingChart(): JSX.Element {
       },
     });
 
-    // ----- EL CAMBIO IMPORTANTE (v5) -----
-    // Usamos el método genérico addSeries y especificamos 'Candlestick'
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#10b981',
       downColor: '#ef4444',
@@ -96,120 +86,127 @@ function TradingChart(): JSX.Element {
       wickDownColor: '#ef4444',
     });
 
-    candleSeriesRef.current = candleSeries; // Guardamos la serie en el ref
+    chartRef.current = chart;
+    candleSeriesRef.current = candleSeries;
 
-    // El resto de la lógica para obtener y mostrar datos es la misma
-    fetch(
-      `http://localhost:8000/api/market-data?ticker=${ticker}&period=${selectedPeriod}`
-    )
-      .then((res) => res.json())
-      .then((data: CandleData[]) => {
-        // Aseguramos que la serie exista antes de asignarle datos
-        if (candleSeries && data.length > 0) {
-          candleSeries.setData(data);
-
-          // Calculate last price and change
-          const lastCandle = data[data.length - 1];
-          const previousCandle = data[data.length - 2];
-
-          setLastPrice(lastCandle.close);
-          if (previousCandle) {
-            setPriceChange(lastCandle.close - previousCandle.close);
-          }
-
-          // Calculate additional metrics
-          const prices = data.map((d) => d.close);
-          setHigh24h(Math.max(...prices));
-          setLow24h(Math.min(...prices));
-
-          // Mock volume data
-          setVolume(Math.floor(Math.random() * 1000000) + 500000);
-        }
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        // Si hay error, generar datos mock para demostración
-        const mockData: CandleData[] = [];
-        const basePrice = 136.5;
-        const now = Math.floor(Date.now() / 1000);
-
-        for (let i = 0; i < 100; i++) {
-          const time = now - (100 - i) * 60; // 1 minuto por punto
-          const change = (Math.random() - 0.5) * 2;
-          const open = basePrice + change;
-          const close = open + (Math.random() - 0.5) * 1;
-          const high = Math.max(open, close) + Math.random() * 0.5;
-          const low = Math.min(open, close) - Math.random() * 0.5;
-
-          mockData.push({
-            time: time as UTCTimestamp,
-            open,
-            high,
-            low,
-            close,
-          });
-        }
-
-        if (candleSeries) {
-          candleSeries.setData(mockData);
-
-          const lastCandle = mockData[mockData.length - 1];
-          const previousCandle = mockData[mockData.length - 2];
-
-          setLastPrice(lastCandle.close);
-          if (previousCandle) {
-            setPriceChange(lastCandle.close - previousCandle.close);
-          }
-
-          const prices = mockData.map((d) => d.close);
-          setHigh24h(Math.max(...prices));
-          setLow24h(Math.min(...prices));
-          setVolume(Math.floor(Math.random() * 1000000) + 500000);
-        }
-        setIsLoading(false);
-      });
-
-    // --- CONEXIÓN WEBSOCKET ---
-    console.log('Intentando conectar al WebSocket...');
-    const ws = new WebSocket(`ws://localhost:3000/ws/ticks/${ticker}/`);
-
-    ws.onopen = () => {
-      console.log('Conectado al WebSocket!');
-    };
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'ticker.update' && candleSeriesRef.current) {
-        console.log('Tick recibido:', data.payload);
-        // Usamos update() para añadir el nuevo punto sin recargar todo el gráfico
-        candleSeriesRef.current.update(data.payload);
-      }
-    };
-
-    ws.onclose = () => {
-      console.log('Desconectado del WebSocket.');
-    };
-
-    ws.onerror = (error) => {
-      console.error('Error de WebSocket:', error);
-    };
-
-    const handleResize = () => {
+    const handleResize = () =>
       chart.applyOptions({ width: chartContainerRef.current!.clientWidth });
-    };
-
     window.addEventListener('resize', handleResize);
 
     return () => {
-      ws.close();
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
+  }, []);
+
+  useEffect(() => {
+    if (!candleSeriesRef.current || !chartRef.current) return;
+
+    setIsLoading(true);
+    const candleSeries = candleSeriesRef.current;
+    const chart = chartRef.current;
+
+    // This will be our active WebSocket connection for this effect cycle
+    let ws: WebSocket | null = null;
+
+    const getIntervalSeconds = (period: TimePeriod): number => {
+      switch (period) {
+        case '1m':
+          return 60;
+        case '15m':
+          return 15 * 60;
+        case '1h':
+          return 60 * 60;
+        default:
+          return 24 * 60 * 60;
+      }
+    };
+    const intervalSeconds = getIntervalSeconds(selectedPeriod);
+
+    // 1. Fetch historical data first
+    fetch(
+      `http://localhost/api/market-data?ticker=${ticker}&period=${selectedPeriod}`
+    )
+      .then((res) => res.json())
+      .then((data: CandleData[]) => {
+        candleSeries.setData(data);
+        chart.timeScale().fitContent();
+
+        if (data.length > 0) {
+          lastTimestampRef.current = data[data.length - 1].time as number;
+        }
+        liveCandleRef.current = null; // Reset live candle after history loads
+        setIsLoading(false);
+
+        // 2. Establish WebSocket connection ONLY AFTER historical data is loaded
+        ws = new WebSocket(`ws://localhost/ws/ticks/${ticker}/`);
+        ws.onopen = () => console.log('WebSocket Connected!');
+        ws.onclose = () => console.log('WebSocket Disconnected.');
+        ws.onerror = (error) => console.error('WebSocket Error:', error);
+
+        ws.onmessage = (event) => {
+          const message = JSON.parse(event.data);
+          if (message.type === 'ticker.update') {
+            const tick = message.payload as { time: number; close: number };
+
+            if (tick.time <= (lastTimestampRef.current ?? 0)) {
+              return; // Ignore old tick
+            }
+            lastTimestampRef.current = tick.time;
+
+            const candleTimestamp = (tick.time -
+              (tick.time % intervalSeconds)) as UTCTimestamp;
+            let currentCandle = liveCandleRef.current;
+
+            if (!currentCandle) {
+              // If this is the first tick, check if it belongs to the last historical candle
+              const lastHistoricalCandle =
+                data.length > 0 ? data[data.length - 1] : null;
+              if (
+                lastHistoricalCandle &&
+                candleTimestamp === lastHistoricalCandle.time
+              ) {
+                currentCandle = lastHistoricalCandle;
+              }
+            }
+
+            if (!currentCandle || candleTimestamp > currentCandle.time) {
+              const newCandle: CandleData = {
+                time: candleTimestamp,
+                open: tick.close,
+                high: tick.close,
+                low: tick.close,
+                close: tick.close,
+              };
+              liveCandleRef.current = newCandle;
+            } else {
+              currentCandle.high = Math.max(currentCandle.high, tick.close);
+              currentCandle.low = Math.min(currentCandle.low, tick.close);
+              currentCandle.close = tick.close;
+            }
+
+            candleSeries.update(liveCandleRef.current!);
+            setLastPrice(tick.close);
+          }
+        };
+      })
+      .catch((err) => {
+        console.error('Failed to fetch historical data:', err);
+        setIsLoading(false);
+      });
+
+    // Cleanup function: This will run when the effect re-runs (ticker or period change)
+    return () => {
+      if (ws) {
+        console.log(`Closing WebSocket for ${ticker} | ${selectedPeriod}.`);
+        ws.close();
+      }
+    };
   }, [ticker, selectedPeriod]);
 
-  const handleTickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputTicker(e.target.value.toUpperCase());
+  // --- Event Handlers and Formatters ---
+  const handleSymbolSelected = (selectedSymbol: string) => {
+    setTicker(selectedSymbol);
   };
 
   const handlePeriodChange = (period: TimePeriod) => {
@@ -220,6 +217,7 @@ function TradingChart(): JSX.Element {
     setActiveTool(activeTool === tool ? 'none' : tool);
   };
 
+  // Formatters (formatPrice, formatChange, etc. remain the same)
   const formatPrice = (price: number | null): string => {
     if (price === null) return 'N/A';
     return `$${price.toFixed(2)}`;
@@ -251,17 +249,10 @@ function TradingChart(): JSX.Element {
     return volume.toString();
   };
 
-  const handleSymbolSelected = (selectedSymbol: string) => {
-    console.log('Nuevo símbolo seleccionado:', selectedSymbol);
-    setTicker(selectedSymbol); // Actualiza el ticker para recargar el gráfico
-  };
-
   return (
     <div className="trading-chart-container">
       <div className="chart-header">
-        <h2 className="chart-title">
-          <span></span>Gráfico de {ticker}
-        </h2>
+        <h2 className="chart-title">Gráfico de {ticker}</h2>
         <div className="chart-controls">
           <SymbolSearch onSymbolSelect={handleSymbolSelected} />
         </div>
@@ -323,11 +314,11 @@ function TradingChart(): JSX.Element {
           </div>
         </div>
       </div>
-
       <div className={`chart-area ${isLoading ? 'loading' : ''}`}>
         <div ref={chartContainerRef} className="chart-container" />
       </div>
 
+      {/* --- Info Bar --- */}
       <div className="chart-info">
         <div
           className={`info-item ${priceChange && priceChange >= 0 ? 'positive' : 'negative'}`}
@@ -363,6 +354,7 @@ function TradingChart(): JSX.Element {
         </div>
       </div>
 
+      {/* -- Time period selector -- */}
       <div className="time-period-bar">
         <div className="period-buttons">
           {timePeriods.map((period) => (

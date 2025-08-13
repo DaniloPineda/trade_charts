@@ -145,7 +145,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://localhost:80",
 ]
 
 ASGI_APPLICATION = 'trade_charts.asgi.application'

@@ -1,6 +1,5 @@
 import asyncio
 import random
-import time
 from django.core.management.base import BaseCommand
 from channels.layers import get_channel_layer
 from datetime import datetime, timedelta
@@ -21,11 +20,11 @@ class Command(BaseCommand):
         candle_interval_seconds = 5 
 
         while True:
-            now = datetime.utcnow()
+            now = datetime.now()
             timestamp = int(now.timestamp())
 
             # Generate a random price move
-            price_change = random.uniform(-0.25, 0.25)
+            price_change = random.uniform(-1, 1)
             new_price = round(price + price_change, 2)
             
             # If there is no current candle or the interval has passed, start a new one
@@ -44,7 +43,8 @@ class Command(BaseCommand):
                     'open': new_price,
                     'high': new_price,
                     'low': new_price,
-                    'close': new_price
+                    'close': new_price,
+                    'volume': 5749419
                 }
             else: # Otherwise, update the current candle
                 current_candle['high'] = max(current_candle['high'], new_price)

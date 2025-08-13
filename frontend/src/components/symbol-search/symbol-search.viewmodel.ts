@@ -1,13 +1,7 @@
 import { action, makeObservable, observable } from 'mobx'; // 'runInAction' no es necesario aquí
 import FinhubService from '../../services/finhub.service';
 import Container from 'typedi';
-
-interface Symbol {
-  description: string;
-  displaySymbol: string;
-  symbol: string;
-  type: string;
-}
+import { Symbol } from '../../dtos/symbols.dto';
 
 export class SymbolSearchViewModel {
   // Para manejar el timer del debouncer

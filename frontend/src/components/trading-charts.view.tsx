@@ -7,7 +7,7 @@ import {
   IChartApi,
   ISeriesApi,
 } from 'lightweight-charts';
-import SymbolSearch from './symbol-search/symbol-search';
+import SymbolSearch from './symbol-search/symbol-search.view';
 import { CandleData, TimePeriod } from '../dtos/ticker-data.dto';
 import { observer } from 'mobx-react';
 import tradingChartsViewModel from './trading-charts.viewmodel';
@@ -143,9 +143,11 @@ const TradingChart: FC<any> = observer(() => {
 
     const establishWebSocketConnection = () => {
       webSocket = new WebSocket(`ws://localhost:3000/ws/ticks/${ticker}/`);
-      webSocket.onopen = () => console.log('WebSocket Connected!');
-      webSocket.onclose = () => console.log('WebSocket Disconnected.');
-      webSocket.onerror = (error) => console.error('WebSocket Error:', error);
+      webSocket.onopen = () => console.log(`${ticker} WebSocket Connected!`);
+      webSocket.onclose = () =>
+        console.log(`${ticker} WebSocket Disconnected.`);
+      webSocket.onerror = (error) =>
+        console.error(`${ticker} WebSocket Error:`, error);
 
       webSocket.onmessage = (event) => {
         const msg = JSON.parse(event.data);

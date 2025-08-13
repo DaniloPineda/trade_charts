@@ -12,7 +12,7 @@ FINNHUB_API_TOKEN = os.environ.get(
 )
 
 # --- Generador de Datos Dinámico (reemplaza tu generador estático) ---
-def generate_dynamic_mock_data(period='1d', ticker='AAPL'):
+def generate_dynamic_mock_data(ticker, period='1d'):
     now = datetime.utcnow()
     data = []
     base_price = 150.0
@@ -68,15 +68,15 @@ def generate_dynamic_mock_data(period='1d', ticker='AAPL'):
     return data
 class MarketDataView(APIView):
     def get(self, request):
-        ticker = request.query_params.get("ticker", "AAPL")
-        period = request.query_params.get('period', '1d')
+        ticker = request.query_params.get("ticker")
+        period = request.query_params.get('period')
 
         if not ticker:
             return Response({"error": "Ticker symbol is required"}, status=400)
 
         try:
             # Llama a la nueva función para generar datos dinámicamente
-            mock_data = generate_dynamic_mock_data(period, ticker)
+            mock_data = generate_dynamic_mock_data(ticker, period)
             return Response(mock_data)
 
             end_time = int(time.time())

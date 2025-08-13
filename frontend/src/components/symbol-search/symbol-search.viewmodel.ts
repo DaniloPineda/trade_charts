@@ -1,4 +1,4 @@
-import { action, makeObservable, observable } from 'mobx'; // 'runInAction' no es necesario aquí
+import { action, makeObservable, observable, runInAction } from 'mobx'; // 'runInAction' no es necesario aquí
 import FinhubService from '../../services/finhub.service';
 import Container from 'typedi';
 import { Symbol } from '../../dtos/symbols.dto';
@@ -18,7 +18,8 @@ export class SymbolSearchViewModel {
       query: observable,
       symbols: observable,
       setQuery: action,
-      fetchSymbols: action, // Aunque será privada, la marcamos como acción
+      fetchSymbols: action,
+      selectSymbol: action,
     });
   }
 
@@ -50,12 +51,18 @@ export class SymbolSearchViewModel {
   fetchSymbols = async () => {
     try {
       const symbolsResult = await this.service.searchSymbols(this.query);
-      this.symbols = symbolsResult.result || [];
+      runInAction(() => {
+        this.symbols = symbolsResult.result || [];
+      });
     } catch (error) {
       console.error('Error fetching symbols:', error);
-      this.symbols = [];
+      runInAction(() => {
+        this.symbols = [];
+      });
     } finally {
-      this.isLoading = false;
+      runInAction(() => {
+        this.isLoading = false;
+      });
     }
   };
 }

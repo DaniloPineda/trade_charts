@@ -20,7 +20,7 @@ class Command(BaseCommand):
         candle_interval_seconds = 5 
 
         while True:
-            now = datetime.now()
+            now = datetime.utcnow()
             timestamp = int(now.timestamp())
 
             # Generate a random price move
@@ -31,7 +31,7 @@ class Command(BaseCommand):
             if current_candle is None or timestamp >= current_candle['time'] + candle_interval_seconds:
                 # If there was a previous candle, send it first
                 if current_candle:
-                    await channel_layer.group_send('ticker_AAPL', {
+                    await channel_layer.group_send('ticker_SPY', {
                         'type': 'ticker_update',
                         'message': current_candle
                     })

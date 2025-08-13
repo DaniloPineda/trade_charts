@@ -5,7 +5,7 @@ import Container from "typedi";
 
 class TradingChartsViewModel {  
     // Component State
-    ticker: string = 'AAPL';
+    ticker: string = 'SPY';
     selectedPeriod: tickerData.TimePeriod = '1h';
     activeTool: string = 'none';
     isLoading: boolean = false;
@@ -38,6 +38,10 @@ class TradingChartsViewModel {
             setSelectedPeriod: action,
             setActiveTool: action,
             setLastPrice: action,
+            setPriceChange: action,
+            setHigh24h: action,
+            setLow24h: action,
+            setVolume: action,
         })
     }
 

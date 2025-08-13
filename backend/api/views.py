@@ -18,7 +18,10 @@ def generate_dynamic_mock_data(period='1d', ticker='AAPL'):
     base_price = 150.0
     
     # Define la cantidad de velas y el intervalo de tiempo
-    if period == '15m':
+    if period == '1m':
+        points = 1440  # 4 velas por hora, 24 horas
+        delta = timedelta(minutes=1)
+    elif period == '15m':
         points = 96  # 4 velas por hora, 24 horas
         delta = timedelta(minutes=15)
     elif period == '1h':

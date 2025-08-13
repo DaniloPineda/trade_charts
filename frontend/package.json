@@ -11,7 +11,6 @@
     "@types/node": "^16.18.126",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
-    "http-proxy-middleware": "^2.0.6",
     "lightweight-charts": "^5.0.8",
     "mobx": "^6.13.7",
     "mobx-react": "^9.2.0",
@@ -33,12 +32,12 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "lint": "npm run lint:frontend && npm run lint:backend",
     "lint:frontend": "eslint . --ext .ts,.tsx",
-    "lint:backend": "..\\backend\\venv\\Scripts\\python.exe -m flake8 ..\\backend\\api",
     "format:frontend": "prettier --write .",
-    "format": "npm run format:frontend && npm run format:backend",
-    "format:backend": "..\\backend\\venv\\Scripts\\python.exe -m black ..\\backend\\api"
+    "lint:backend": "..\\backend\\venv\\Scripts\\python.exe -m flake8 ..\\backend\\api",
+    "format:backend": "..\\backend\\venv\\Scripts\\python.exe -m black ..\\backend\\api",
+    "lint": "npm run lint:frontend && npm run lint:backend",
+    "format": "npm run format:frontend && npm run format:backend"
   },
   "eslintConfig": {
     "extends": [

@@ -12,6 +12,8 @@ WORKDIR /app/backend
 
 # 4. Instalar dependencias
 # Copiamos solo el archivo de requerimientos primero para aprovechar el cache de Docker
+RUN apt-get update && apt-get install -y netcat-openbsd
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

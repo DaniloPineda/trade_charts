@@ -1,49 +1,55 @@
 services:
-  # --- Servicio de Redis ---
   redis:
-    image: "redis:alpine" # Usamos la imagen oficial y ligera de Redis
+    image: "redis:alpine"
     container_name: trade_charts_redis
-    ports:
-      - "6379:6379" # Mapeamos el puerto para poder conectarnos desde fuera si es necesario
 
-  # --- Servicio del Backend (Django) ---
   backend:
-    build: ./backend # Le dice a Compose que construya la imagen desde la carpeta ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: trade_charts_backend
-    command: daphne -b 0.0.0.0 -p 8000 asgi:application
+    command: daphne -b 0.0.0.0 -p 8000 trade_charts.asgi:application
     volumes:
-      - ./backend:/app/backend # Sincroniza tu código local con el del contenedor para hot-reloading
-    ports:
-      - "8000:8000" # Mapea el puerto 8000 del contenedor a tu máquina local
+      - ./backend:/app/backend
+    environment:
+      - REDIS_HOST=redis
     depends_on:
-      - redis # Le dice a Docker que inicie Redis ANTES que el backend
+      - redis
 
-  # --- Servicio del Frontend (React) ---
   frontend:
     build: ./frontend
     container_name: trade_charts_frontend
     volumes:
-      # Sincroniza tu código para hot-reloading
       - ./frontend:/app/frontend
-      # Crea un "volumen anónimo" para node_modules, aislando la carpeta
-      # del contenedor y evitando que sea sobrescrita por el montaje anterior.
       - /app/frontend/node_modules
-    ports:
-      - "3000:3000"
     environment:
-      # Ayuda a que el hot-reloading de React funcione mejor con Docker
       - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
     depends_on:
       - backend
 
-  # --- Nuevo servicio para el simulador de Ticks ---
-  # ticker:
-  #   build: ./backend
-  #   container_name: trade_charts_ticker
-  #   # Llama directamente al comando de management
-  #   command: python manage.py start_ticker
-  #   volumes:
-  #     - ./backend:/app/backend
-  #   depends_on:
-  #     - redis
-  #     - backend
+  ticker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trade_charts_ticker
+    command: ["/app/backend/scripts/ticker-entrypoint.sh"]
+    volumes:
+      - ./backend:/app/backend
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+      - backend
+  nginx:
+    image: nginx:stable-alpine
+    container_name: trade_charts_nginx
+    ports:
+      - "3000:3000"
+      - "6379:6379"
+    volumes:
+      # Mount our new NGINX configuration file into the container
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - frontend
+      - backend

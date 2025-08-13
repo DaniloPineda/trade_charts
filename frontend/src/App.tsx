@@ -1,6 +1,6 @@
 import React, { JSX } from 'react';
 import './styles/App.scss';
-import TradingChart from './components/trading-charts';
+import TradingChart from './components/trading-charts.view';
 
 function App(): JSX.Element {
   return (

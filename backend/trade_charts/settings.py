@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +26,14 @@ SECRET_KEY = "django-insecure-+zn6yr8$dqnfu!)f)ewk-@sv%a-b8$$yf$e!(*fxwi@g5w+zk!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'backend']
+
+ASGI_ALLOWED_HOSTS = ALLOWED_HOSTS
+
+# Confía en el encabezado X-Forwarded-Host que envía el proxy (NGINX)
+USE_X_FORWARDED_HOST = True
+# Confía en el encabezado que indica que la conexión es segura (para cuando uses HTTPS)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
@@ -54,7 +62,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "urls"
+ROOT_URLCONF = "trade_charts.urls"
 
 TEMPLATES = [
     {
@@ -71,7 +79,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "wsgi.application"
+WSGI_APPLICATION = "trade_charts.wsgi.application"
 
 
 # Database
@@ -84,11 +92,12 @@ DATABASES = {
     }
 }
 
+REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("redis", 6379)],
+            "hosts": [(REDIS_HOST, 6379)],
         },
     },
 }
@@ -138,4 +147,4 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
 
-ASGI_APPLICATION = 'asgi.application'
+ASGI_APPLICATION = 'trade_charts.asgi.application'

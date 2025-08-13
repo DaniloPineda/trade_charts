@@ -70,6 +70,7 @@ backend/
 ├── api/                    # Aplicaciones Django
 │   ├── market_data/        # API para datos de mercado
 │   └── users/              # API para usuarios
+├── trade_charts/           # Configuración principal
 │   ├── settings.py
 │   ├── urls.py
 │   └── wsgi.py
@@ -132,7 +133,7 @@ python manage.py runserver
 ```bash
 python manage.py collectstatic
 python manage.py migrate
-gunicorn wsgi:application
+gunicorn trade_charts.wsgi:application
 ```
 
 ## 📝 Licencia

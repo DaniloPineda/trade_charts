@@ -115,7 +115,7 @@ python manage.py test
 
 ### Modelos Principales
 
-- **Symbol**: Símbolos de trading (AAPL, TSLA, etc.)
+- **Symbol**: Símbolos de trading (SPY, QQQ, etc.)
 - **CandleData**: Datos de velas japonesas
 - **User**: Usuarios del sistema
 - **Watchlist**: Listas de seguimiento de usuarios

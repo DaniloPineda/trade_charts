@@ -24,7 +24,7 @@ export const SymbolSearch: FC<SymbolSearchProps> = observer(
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value.toUpperCase())}
-          placeholder="Buscar símbolo (ej: AAPL)"
+          placeholder="Buscar símbolo (ej: SPY)"
           className={classes.searchInput}
         />
         {/* El loader ahora es un div con la clase que lo anima */}

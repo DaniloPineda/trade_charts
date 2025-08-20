@@ -106,7 +106,7 @@ trading_charts/
 
 ### Cambiar Símbolo
 
-1. Ingresa el símbolo en el campo de texto (ej: AAPL, TSLA, GOOGL)
+1. Ingresa el símbolo en el campo de texto (ej: SPY, QQQ, etc.)
 2. Haz clic en "Cargar"
 3. El gráfico se actualizará automáticamente
 

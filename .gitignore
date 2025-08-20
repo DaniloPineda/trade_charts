@@ -153,3 +153,6 @@ dmypy.json
 backend/__pycache__/
 backend/.env
 backend/venv/ 
+
+#mocks
+backend/api/mocks

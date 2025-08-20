@@ -5,7 +5,7 @@ import Container from "typedi";
 
 class TradingChartsViewModel {  
     // Component State
-    ticker: string = 'SPY';
+    ticker:string = process.env.REACT_APP_TICKER_SYMBOL || 'SPY';
     selectedPeriod: tickerData.TimePeriod = '1h';
     activeTool: string = 'none';
     isLoading: boolean = false;

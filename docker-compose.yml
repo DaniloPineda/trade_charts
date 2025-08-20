@@ -13,6 +13,7 @@ services:
       - ./backend:/app/backend
     environment:
       - REDIS_HOST=redis
+      - TICKER_SYMBOL=${TICKER_SYMBOL}
     depends_on:
       - redis
 
@@ -25,6 +26,7 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
+      - REACT_APP_TICKER_SYMBOL=${TICKER_SYMBOL}
     depends_on:
       - backend
 
@@ -39,6 +41,7 @@ services:
       - ./backend/scripts:/app/backend/scripts
     environment:
       - REDIS_HOST=redis
+      - TICKER_SYMBOL=${TICKER_SYMBOL}
     depends_on:
       - redis
       - backend

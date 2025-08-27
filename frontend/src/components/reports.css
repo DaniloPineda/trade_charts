@@ -1,0 +1,135 @@
+h2 {
+  padding-bottom: 8px;
+}
+
+.reports-container {
+  padding: 2rem;
+  color: #333;
+}
+
+.reports-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 2rem;
+}
+
+.reports-table th,
+.reports-table td {
+  padding: 6px 15px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.reports-table th {
+  background-color: #f4f4f4;
+}
+
+/* --- Estilos para la Fila Principal --- */
+.expandable-row {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.expandable-row:hover {
+  background-color: #f0f8ff; /* Un azul muy claro al pasar el ratón */
+}
+
+/* Cuando la fila está expandida, quitamos su borde inferior para unirla con el contenido */
+.expandable-row.expanded {
+  border-bottom: none;
+}
+
+.expand-arrow {
+  display: inline-block;
+  margin-left: 10px;
+  font-size: 0.8em;
+  transition: transform 0.3s ease; /* Transición para la flecha */
+  float: right;
+}
+
+/* Rotamos la flecha cuando la fila está expandida */
+.expandable-row.expanded .expand-arrow {
+  transform: rotate(90deg);
+}
+
+/* --- Estilos para el Contenido Expandido (La Magia) --- */
+.expanded-content-row td {
+  padding: 0;
+  border-top: none; /* Quitamos el borde superior para una transición limpia */
+}
+
+.previous-reports-container {
+  /* Ocultamos el contenido por defecto con max-height: 0 */
+  max-height: 0;
+  overflow-y: scroll;
+  padding: 0 2rem; /* Padding horizontal para el contenido */
+  background-color: #f9f9f9;
+  /* La transición suave para el efecto de "deslizamiento" */
+  transition:
+    max-height 0.4s ease-in-out,
+    padding 0.4s ease-in-out;
+}
+
+.positive {
+  color: #10b981;
+}
+.negative {
+  color: #ef4444;
+}
+
+/* Cuando la fila está visible, le damos una altura máxima y padding */
+.expanded-content-row .previous-reports-container {
+  max-height: 250px; /* Un valor alto para asegurar que todo el contenido quepa */
+  padding: 1rem 2rem;
+}
+
+.report-title {
+  font-size: larger;
+  font-weight: 700;
+  margin-bottom: 16px;
+  margin-top: 24px;
+}
+
+.reports-container {
+  padding: 2rem;
+  color: #333;
+  height: calc(
+    100vh - 100px
+  ); /* Ajusta la altura para que ocupe la pantalla menos el header */
+  overflow-y: auto; /* ¡Esta es la línea clave que habilita el scroll vertical! */
+}
+.report-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.report-card-body {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px;
+}
+
+.report-card-body-date {
+  width: 25%;
+}
+
+.report-card-body div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.upcoming-reports-grid {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.upcoming-reports-grid .reports-table {
+  flex: 1;
+  margin-bottom: 0;
+}

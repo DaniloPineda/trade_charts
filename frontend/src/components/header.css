@@ -1,0 +1,37 @@
+/* frontend/src/components/Header.css */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #1f2937; /* Un color oscuro para el header */
+  color: white;
+}
+
+.logo a,
+.main-nav a {
+  color: white;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.logo a {
+  font-weight: bold;
+  font-size: 1.5em;
+}
+
+.main-nav {
+  display: flex;
+  gap: 1rem; /* Espacio entre los botones */
+}
+
+.main-nav a:hover {
+  background-color: #374151;
+}
+
+/* Opcional: Estilo para el enlace activo */
+.main-nav a.active {
+  background-color: #4f46e5;
+}

@@ -1,9 +1,16 @@
 import React, { JSX } from 'react';
 
-export type ToolType = 'None' | 'Select' | 'Line' | 'Rect' | 'Circle' | 'Erase';
+export enum ToolType {
+  None = 'None',
+  Select = 'Select',
+  Line = 'Line',
+  Rect = 'Rect',
+  Circle = 'Circle',
+  Erase = 'Erase',
+}
 
 const ICONS: Record<ToolType, JSX.Element> = {
-  Select: (
+  [ToolType.Select]: (
     <svg viewBox="0 0 24 24">
       <path
         d="M4 4l6 14 2-6 6-2-14-6z"
@@ -13,12 +20,12 @@ const ICONS: Record<ToolType, JSX.Element> = {
       />
     </svg>
   ),
-  Line: (
+  [ToolType.Line]: (
     <svg viewBox="0 0 24 24">
       <path d="M4 20L20 4" stroke="currentColor" strokeWidth="2" fill="none" />
     </svg>
   ),
-  Rect: (
+  [ToolType.Rect]: (
     <svg viewBox="0 0 24 24">
       <rect
         x="5"
@@ -31,7 +38,7 @@ const ICONS: Record<ToolType, JSX.Element> = {
       />
     </svg>
   ),
-  Circle: (
+  [ToolType.Circle]: (
     <svg viewBox="0 0 24 24">
       <circle
         cx="12"
@@ -43,7 +50,7 @@ const ICONS: Record<ToolType, JSX.Element> = {
       />
     </svg>
   ),
-  Erase: (
+  [ToolType.Erase]: (
     <svg viewBox="0 0 24 24">
       <path
         d="M16 3L21 8L9 20H4L3 19L16 3Z"
@@ -53,7 +60,7 @@ const ICONS: Record<ToolType, JSX.Element> = {
       />
     </svg>
   ),
-  None: (
+  [ToolType.None]: (
     <svg viewBox="0 0 24 24">
       <path d="M4 12h16" stroke="currentColor" strokeWidth="2" fill="none" />
     </svg>

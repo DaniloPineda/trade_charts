@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { makeAutoObservable, autorun } from 'mobx';
+import { makeAutoObservable, autorun, toJS } from 'mobx';
 import { observer } from 'mobx-react-lite';
 import type {
   IChartApi,
@@ -10,11 +10,11 @@ import type {
 import { ToolType } from './shared';
 
 type DataPt = { logical: Logical; price: number };
-
+type CursorCss = NonNullable<React.CSSProperties['cursor']>;
 type BaseShape = { id: string; stroke: string; width: number };
-type LineShape = BaseShape & { t: 'Line'; a: DataPt; b: DataPt };
-type RectShape = BaseShape & { t: 'Rect'; a: DataPt; b: DataPt };
-type CircleShape = BaseShape & { t: 'Circle'; c: DataPt; e: DataPt };
+type LineShape = BaseShape & { t: ToolType.Line; a: DataPt; b: DataPt };
+type RectShape = BaseShape & { t: ToolType.Rect; a: DataPt; b: DataPt };
+type CircleShape = BaseShape & { t: ToolType.Circle; c: DataPt; e: DataPt };
 type Shape = LineShape | RectShape | CircleShape;
 
 type LogicalRange = { from: Logical; to: Logical };
@@ -32,6 +32,7 @@ class DrawingStore {
   dirty = 0; // bump para repintar
   stroke = PALETTE[0];
   width = 2;
+  hoverId: string | null = null;
 
   constructor(public storageKey: string) {
     makeAutoObservable(this);
@@ -43,23 +44,31 @@ class DrawingStore {
     this.width = width;
   }
 
+  setHover(id: string | null) {
+    this.hoverId = id;
+    this.bump(); // fuerza repintado
+  }
+
   startDraft(tool: ToolType, p: DataPt) {
     const base = {
       id: crypto.randomUUID(),
       stroke: this.stroke,
       width: this.width,
     };
-    if (tool === 'Line') this.draft = { ...base, t: 'Line', a: p, b: p };
-    if (tool === 'Rect') this.draft = { ...base, t: 'Rect', a: p, b: p };
-    if (tool === 'Circle') this.draft = { ...base, t: 'Circle', c: p, e: p };
+    if (tool === ToolType.Line)
+      this.draft = { ...base, t: ToolType.Line, a: p, b: p };
+    if (tool === ToolType.Rect)
+      this.draft = { ...base, t: ToolType.Rect, a: p, b: p };
+    if (tool === ToolType.Circle)
+      this.draft = { ...base, t: ToolType.Circle, c: p, e: p };
     this.bump();
   }
 
   updateDraft(p: DataPt) {
     if (!this.draft) return;
-    if (this.draft.t === 'Line') this.draft = { ...this.draft, b: p };
-    if (this.draft.t === 'Rect') this.draft = { ...this.draft, b: p };
-    if (this.draft.t === 'Circle') this.draft = { ...this.draft, e: p };
+    if (this.draft.t === ToolType.Line) this.draft = { ...this.draft, b: p };
+    if (this.draft.t === ToolType.Rect) this.draft = { ...this.draft, b: p };
+    if (this.draft.t === ToolType.Circle) this.draft = { ...this.draft, e: p };
     this.bump();
   }
 
@@ -85,19 +94,19 @@ class DrawingStore {
         logical: L(LN(pt.logical) + dL),
         price: pt.price + dP,
       });
-      if (snapshot.t === 'Line')
+      if (snapshot.t === ToolType.Line)
         return {
           ...s,
           a: shift((snapshot as any).a),
           b: shift((snapshot as any).b),
         };
-      if (snapshot.t === 'Rect')
+      if (snapshot.t === ToolType.Rect)
         return {
           ...s,
           a: shift((snapshot as any).a),
           b: shift((snapshot as any).b),
         };
-      if (snapshot.t === 'Circle')
+      if (snapshot.t === ToolType.Circle)
         return {
           ...s,
           c: shift((snapshot as any).c),
@@ -112,10 +121,11 @@ class DrawingStore {
     if (!this.selectedId) return;
     this.shapes = this.shapes.map((s) => {
       if (s.id !== this.selectedId) return s;
-      if (s.t === 'Line' && (handle === 'a' || handle === 'b'))
+      if (s.t === ToolType.Line && (handle === 'a' || handle === 'b'))
         return { ...s, [handle]: p } as Shape;
-      if (s.t === 'Rect' && handle === 'b') return { ...s, b: p } as Shape;
-      if (s.t === 'Circle' && (handle === 'c' || handle === 'e'))
+      if (s.t === ToolType.Rect && (handle === 'a' || handle === 'b'))
+        return { ...s, [handle]: p } as Shape;
+      if (s.t === ToolType.Circle && (handle === 'c' || handle === 'e'))
         return { ...s, [handle]: p } as Shape;
       return s;
     });
@@ -158,11 +168,19 @@ type Props = {
   storageKey: string;
   tool: ToolType;
   onFinishDraw?: () => void;
+  onSetTool?: (t: ToolType) => void;
 };
 
 const DrawingCanvas: React.FC<Props> = observer(
-  ({ targetRef, chart, series, storageKey, tool, onFinishDraw }) => {
+  ({ targetRef, chart, series, storageKey, tool, onFinishDraw, onSetTool }) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const dragRef = useRef<{
+      mode: 'move' | 'handle' | null;
+      id: string | null;
+      handle?: 'a' | 'b' | 'c' | 'e';
+      startCursor?: DataPt;
+      snapshot?: Shape;
+    }>({ mode: null, id: null });
     const store = useMemo(() => new DrawingStore(storageKey), [storageKey]);
 
     // --- helpers de LWT v5
@@ -259,6 +277,137 @@ const DrawingCanvas: React.FC<Props> = observer(
       };
     }, [chart]);
 
+    // REPLACE your existing host hover/click effect with this unified one:
+    useEffect(() => {
+      const host = targetRef.current;
+      if (!host || !chart || !series) return;
+
+      const getXY = (ev: PointerEvent) => {
+        const rect = (canvasRef.current ?? host).getBoundingClientRect();
+        return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+      };
+
+      // --- HOVER (siempre activo para pintar aura y cursor del host en None)
+      const onMoveHover = (ev: PointerEvent) => {
+        const { x, y } = getXY(ev);
+        const id = hitShapeIdAt(x, y);
+        store.setHover(id ?? null);
+        if (tool === ToolType.None) setCursor(id ? 'pointer' : 'default');
+      };
+
+      const onLeave = () => {
+        store.setHover(null);
+        if (tool === ToolType.None) setCursor('default');
+      };
+
+      // --- DRAG desde None: si hay hover y comienzas a arrastrar, agarramos la figura
+      const onDownFromNone = (ev: PointerEvent) => {
+        if (tool !== ToolType.None) return;
+        const { x, y } = getXY(ev);
+        const id = hitShapeIdAt(x, y);
+        if (!id) return;
+
+        // Bloquea pan del chart y captura el puntero en el host
+        ev.preventDefault();
+        (host as any).setPointerCapture?.(ev.pointerId);
+
+        // Selecciona y arranca drag (move) con snapshot plano (toJS)
+        store.select(id);
+        const lg = xToLogical(x),
+          p = yToPrice(y);
+        if (lg == null || p == null) return;
+        const snapshot = toJS(store.shapes.find((s) => s.id === id)!) as Shape;
+
+        dragRef.current = {
+          mode: 'move',
+          id,
+          startCursor: { logical: lg, price: p },
+          snapshot,
+        };
+
+        // Activa Select para que el overlay quede activo; cursor de “grabbing”
+        onSetTool?.(ToolType.Select);
+        setCursor('grabbing');
+      };
+
+      const onMoveDragFromNone = (ev: PointerEvent) => {
+        // Solo si iniciamos un drag desde None (ya estamos en Select por onDown)
+        if (tool !== ToolType.Select || dragRef.current.mode !== 'move') return;
+        const { x, y } = getXY(ev);
+        const lg = xToLogical(x),
+          p = yToPrice(y);
+        if (lg == null || p == null) return;
+        const start = dragRef.current.startCursor;
+        const snap = dragRef.current.snapshot;
+        if (!start || !snap) return;
+
+        const dL = LN(lg) - LN(start.logical);
+        const dP = p - start.price;
+        store.moveSelected(dL, dP, snap);
+        setCursor('grabbing'); // mantener cursor
+      };
+
+      const onUpDragFromNone = (ev: PointerEvent) => {
+        if (dragRef.current.mode !== 'move') return;
+        (host as any).releasePointerCapture?.(ev.pointerId);
+        store.save();
+        dragRef.current = { mode: null, id: null };
+        // Restituye cursor acorde a hover actual
+        if (tool === ToolType.Select) {
+          setCursor(store.hoverId ? 'pointer' : 'default');
+        } else {
+          setCursor('default');
+        }
+      };
+
+      // Listeners (fase capture para ir antes que el chart)
+      host.addEventListener('pointermove', onMoveHover, true);
+      host.addEventListener('pointerleave', onLeave, true);
+      host.addEventListener('pointerdown', onDownFromNone, true);
+      host.addEventListener('pointermove', onMoveDragFromNone, true);
+      window.addEventListener('pointerup', onUpDragFromNone, true);
+
+      return () => {
+        host.removeEventListener('pointermove', onMoveHover, true);
+        host.removeEventListener('pointerleave', onLeave, true);
+        host.removeEventListener('pointerdown', onDownFromNone, true);
+        host.removeEventListener('pointermove', onMoveDragFromNone, true);
+        window.removeEventListener('pointerup', onUpDragFromNone, true);
+        host.style.cursor = '';
+      };
+    }, [targetRef, chart, series, tool, onSetTool]);
+
+    useEffect(() => {
+      const host = targetRef.current;
+      if (!host || !chart || !series) return;
+
+      const onDown = (ev: PointerEvent) => {
+        if (tool !== 'None') return;
+        const rect = (canvasRef.current ?? host).getBoundingClientRect();
+        const x = ev.clientX - rect.left,
+          y = ev.clientY - rect.top;
+        const id = hitShapeIdAt(x, y);
+        if (id) {
+          store.select(id);
+          onSetTool?.(ToolType.Select);
+        }
+      };
+
+      host.addEventListener('pointerdown', onDown, true);
+      return () => host.removeEventListener('pointerdown', onDown, true);
+    }, [targetRef, chart, series, tool, onSetTool]);
+
+    useEffect(() => {
+      if (tool === ToolType.None) return setCursor('default');
+      if (tool === ToolType.Erase) return setCursor('not-allowed');
+      if (tool === ToolType.Select)
+        return setCursor(
+          store.hoverId || store.selectedId ? 'pointer' : 'default'
+        );
+      // Line / Rect / Circle
+      return setCursor('crosshair');
+    }, [tool, store.hoverId, store.selectedId]);
+
     // --- pintar
     const redraw = () => {
       const c = canvasRef.current;
@@ -275,16 +424,32 @@ const DrawingCanvas: React.FC<Props> = observer(
       const drawShape = (s: Shape) => {
         ctx.lineWidth = s.width ?? 2;
         ctx.strokeStyle = s.stroke ?? PALETTE[0];
-        if (s.t === 'Line') {
+        if (s.t === ToolType.Line) {
           const a = toPx(s.a),
             b = toPx(s.b);
           if (!a || !b) return;
+
+          // --- HOVER OUTLINE (NEW) ---
+          if (store.hoverId === s.id && store.selectedId !== s.id) {
+            ctx.save();
+            ctx.lineWidth = (s.width ?? 2) + 4;
+            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+            ctx.restore();
+          }
+          // --- NORMAL ---
+          ctx.lineWidth = s.width ?? 2;
+          ctx.strokeStyle = s.stroke ?? PALETTE[0];
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
           ctx.lineTo(b.x, b.y);
           ctx.stroke();
         }
-        if (s.t === 'Rect') {
+
+        if (s.t === ToolType.Rect) {
           const a = toPx(s.a),
             b = toPx(s.b);
           if (!a || !b) return;
@@ -292,15 +457,40 @@ const DrawingCanvas: React.FC<Props> = observer(
             y = Math.min(a.y, b.y);
           const w = Math.abs(a.x - b.x),
             h = Math.abs(a.y - b.y);
+
+          if (store.hoverId === s.id && store.selectedId !== s.id) {
+            ctx.save();
+            ctx.lineWidth = (s.width ?? 2) + 4;
+            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+            ctx.beginPath();
+            ctx.rect(x, y, w, h);
+            ctx.stroke();
+            ctx.restore();
+          }
+          ctx.lineWidth = s.width ?? 2;
+          ctx.strokeStyle = s.stroke ?? PALETTE[0];
           ctx.beginPath();
           ctx.rect(x, y, w, h);
           ctx.stroke();
         }
-        if (s.t === 'Circle') {
+
+        if (s.t === ToolType.Circle) {
           const cc = toPx(s.c),
             ee = toPx(s.e);
           if (!cc || !ee) return;
           const r = Math.hypot(ee.x - cc.x, ee.y - cc.y);
+
+          if (store.hoverId === s.id && store.selectedId !== s.id) {
+            ctx.save();
+            ctx.lineWidth = (s.width ?? 2) + 4;
+            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+            ctx.beginPath();
+            ctx.arc(cc.x, cc.y, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+          ctx.lineWidth = s.width ?? 2;
+          ctx.strokeStyle = s.stroke ?? PALETTE[0];
           ctx.beginPath();
           ctx.arc(cc.x, cc.y, r, 0, Math.PI * 2);
           ctx.stroke();
@@ -323,15 +513,15 @@ const DrawingCanvas: React.FC<Props> = observer(
             ctx.arc(pt.x, pt.y, HANDLE_R, 0, Math.PI * 2);
             ctx.fill();
           };
-          if (s.t === 'Line') {
+          if (s.t === ToolType.Line) {
             push(s.a);
             push(s.b);
           }
-          if (s.t === 'Rect') {
+          if (s.t === ToolType.Rect) {
             push(s.a);
             push(s.b);
           }
-          if (s.t === 'Circle') {
+          if (s.t === ToolType.Circle) {
             push(s.c);
             push(s.e);
           }
@@ -344,7 +534,7 @@ const DrawingCanvas: React.FC<Props> = observer(
       const pad = 6;
       for (let i = store.shapes.length - 1; i >= 0; i--) {
         const s = store.shapes[i];
-        if (s.t === 'Line') {
+        if (s.t === ToolType.Line) {
           const a = toPx(s.a),
             b = toPx(s.b);
           if (!a || !b) continue;
@@ -359,7 +549,7 @@ const DrawingCanvas: React.FC<Props> = observer(
             y <= Math.max(a.y, b.y) + pad;
           if (inBox && dist < pad) return s.id;
         }
-        if (s.t === 'Rect') {
+        if (s.t === ToolType.Rect) {
           const a = toPx(s.a),
             b = toPx(s.b);
           if (!a || !b) continue;
@@ -369,7 +559,7 @@ const DrawingCanvas: React.FC<Props> = observer(
             By = Math.max(a.y, b.y);
           if (x >= Lx && x <= Rx && y >= Ty && y <= By) return s.id;
         }
-        if (s.t === 'Circle') {
+        if (s.t === ToolType.Circle) {
           const c = toPx(s.c),
             e = toPx(s.e);
           if (!c || !e) continue;
@@ -381,6 +571,66 @@ const DrawingCanvas: React.FC<Props> = observer(
       return null;
     };
 
+    const handles = (
+      s: Shape
+    ): { x: number; y: number; name: 'a' | 'b' | 'c' | 'e' }[] => {
+      const hs: any[] = [];
+      if (s.t === ToolType.Line) {
+        const a = toPx(s.a),
+          b = toPx(s.b);
+        if (a && b) {
+          hs.push({ ...a, name: 'a' });
+          hs.push({ ...b, name: 'b' });
+        }
+      }
+      if (s.t === ToolType.Rect) {
+        const a = toPx(s.a),
+          b = toPx(s.b);
+        if (a && b) {
+          hs.push({ ...a, name: 'a' });
+          hs.push({ ...b, name: 'b' });
+        }
+      }
+      if (s.t === ToolType.Circle) {
+        const c = toPx(s.c),
+          e = toPx(s.e);
+        if (c && e) {
+          hs.push({ ...c, name: 'c' });
+          hs.push({ ...e, name: 'e' });
+        }
+      }
+      return hs;
+    };
+
+    const hitHandlePx = (
+      x: number,
+      y: number
+    ): { id: string; name: 'a' | 'b' | 'c' | 'e' } | null => {
+      if (!store.selectedId) return null;
+      const s = store.shapes.find((sh) => sh.id === store.selectedId);
+      if (!s) return null;
+      for (const h of handles(s))
+        if (Math.hypot(h.x - x, h.y - y) <= HANDLE_R + 2)
+          return { id: s.id, name: h.name };
+      return null;
+    };
+
+    const setCursor = (c: CursorCss) => {
+      if (canvasRef.current) canvasRef.current.style.cursor = c;
+      if (targetRef.current) targetRef.current.style.cursor = c;
+    };
+
+    const getResizeCursorForRect = (): CursorCss => {
+      const s =
+        store.selectedId && store.shapes.find((x) => x.id === store.selectedId);
+      if (!s || s.t !== 'Rect') return 'nwse-resize';
+      const a = toPx(s.a),
+        b = toPx(s.b);
+      if (!a || !b) return 'nwse-resize';
+      const diagNWSE = (a.x < b.x && a.y < b.y) || (a.x > b.x && a.y > b.y);
+      return diagNWSE ? 'nwse-resize' : 'nesw-resize';
+    };
+
     // --- pointer handlers (captura SOLO cuando tool !== 'None')
     const onPointerDown: React.PointerEventHandler<HTMLCanvasElement> = (e) => {
       if (!chart || !series || tool === 'None') return;
@@ -390,16 +640,53 @@ const DrawingCanvas: React.FC<Props> = observer(
       const x = e.clientX - Rect.left,
         y = e.clientY - Rect.top;
 
-      if (tool === 'Erase') {
+      if (tool === ToolType.Erase) {
         const id = hitShapeIdAt(x, y);
         if (id) store.Erase(id);
         return;
       }
 
-      if (tool === 'Select') {
-        const id = hitShapeIdAt(x, y);
-        store.select(id ?? null);
-        // Nota: en esta versión mínima NO hacemos pan; el chart no se mueve con select.
+      if (tool === ToolType.Select) {
+        const Rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - Rect.left,
+          y = e.clientY - Rect.top;
+
+        const hh = hitHandlePx(x, y);
+        const id = hh ? hh.id : hitShapeIdAt(x, y);
+
+        if (hh) {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+          store.select(hh.id);
+          dragRef.current = { mode: 'handle', id: hh.id, handle: hh.name };
+          setCursor(getResizeCursorForRect());
+          return;
+        }
+
+        if (id) {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+          store.select(id);
+          const lg = xToLogical(x),
+            p = yToPrice(y);
+          if (lg == null || p == null) return;
+          // ⚠️ snapshot PLAIN con toJS (evita DataCloneError)
+          const snapshot = toJS(
+            store.shapes.find((s) => s.id === id)!
+          ) as Shape;
+          dragRef.current = {
+            mode: 'move',
+            id,
+            startCursor: { logical: lg, price: p },
+            snapshot,
+          };
+          setCursor('grabbing');
+          return;
+        }
+
+        // click fuera ⇒ deseleccionar y volver a None
+        store.select(null);
+        onSetTool?.(ToolType.None);
         return;
       }
 
@@ -417,27 +704,76 @@ const DrawingCanvas: React.FC<Props> = observer(
         y = e.clientY - Rect.top;
 
       if (store.draft) {
-        const lg = xToLogical(x);
-        const p = yToPrice(y);
+        const lg = xToLogical(x),
+          p = yToPrice(y);
         if (lg == null || p == null) return;
         store.updateDraft({ logical: lg, price: p });
         return;
       }
 
-      if (tool === 'Select' && store.selectedId) {
-        // mover por delta (simple: recomputamos delta sobre el cursor)
-        // Tomamos pequeño delta respecto al último frame:
-        const lg = xToLogical(x);
-        const p = yToPrice(y);
-        if (lg == null || p == null) return;
-        // Para delta estable necesitaríamos snapshot en down; simplificado:
-        // Aquí no movemos al vuelo para mantener la versión mínima.
+      if (tool === ToolType.Select && !dragRef.current.mode) {
+        const overHandle = hitHandlePx(x, y);
+        if (overHandle) {
+          setCursor(getResizeCursorForRect());
+        } else if (store.hoverId) {
+          setCursor('pointer');
+        } else {
+          setCursor('default');
+        }
+      }
+
+      if (tool === ToolType.Select) {
+        if (
+          dragRef.current.mode === 'move' &&
+          dragRef.current.startCursor &&
+          dragRef.current.snapshot
+        ) {
+          e.preventDefault();
+          const lg = xToLogical(x),
+            p = yToPrice(y);
+          if (lg == null || p == null) return;
+          const dL = LN(lg) - LN(dragRef.current.startCursor.logical);
+          const dP = p - dragRef.current.startCursor.price;
+          store.moveSelected(dL, dP, dragRef.current.snapshot);
+          setCursor('grabbing');
+          return;
+        }
+        if (dragRef.current.mode === 'handle' && dragRef.current.handle) {
+          e.preventDefault();
+          const lg = xToLogical(x),
+            p = yToPrice(y);
+          if (lg == null || p == null) return;
+          store.replaceSelectedHandle(dragRef.current.handle, {
+            logical: lg,
+            price: p,
+          });
+          setCursor(getResizeCursorForRect());
+          return;
+        }
       }
     };
 
     const onPointerUp: React.PointerEventHandler<HTMLCanvasElement> = (e) => {
       if (!chart || !series || tool === 'None') return;
+
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+
+      // end move/resize
+      if (dragRef.current.mode) {
+        store.save();
+        dragRef.current = { mode: null, id: null };
+        // restaurar cursor según estado actual
+        if (tool === ToolType.Select) {
+          setCursor(store.hoverId ? 'pointer' : 'default');
+        } else if (tool === ToolType.Erase) {
+          setCursor('not-allowed');
+        } else {
+          setCursor('crosshair'); // line/rect/circle
+        }
+        return;
+      }
+
+      // end drawing
       const wasDrawing = !!store.draft;
       store.commitDraft();
       if (wasDrawing) onFinishDraw?.();

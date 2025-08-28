@@ -275,7 +275,7 @@ const TradingChart: FC<any> = observer(() => {
   const handleSymbolSelected = (s: string) => setTicker(s);
   const handlePeriodChange = (p: TimePeriod) => setSelectedPeriod(p);
   const handleToolClick = (tool: ToolType) =>
-    setActiveTool(activeTool === tool ? 'None' : tool);
+    setActiveTool(activeTool === tool ? ToolType.None : tool);
 
   return (
     <div className={`chart-wrap`}>
@@ -320,7 +320,8 @@ const TradingChart: FC<any> = observer(() => {
                 series={candleSeriesRef.current}
                 storageKey={`${ticker}:${selectedPeriod}`}
                 tool={activeTool as any}
-                onFinishDraw={() => setActiveTool('None')}
+                onFinishDraw={() => setActiveTool(ToolType.None)}
+                onSetTool={(tool) => setActiveTool(tool)}
               />
             )}
         </div>
@@ -373,16 +374,14 @@ const TradingChart: FC<any> = observer(() => {
             ))}
           </div>
           <div className="draw-tools">
-            {(
-              [
-                'None',
-                'Select',
-                'Line',
-                'Rect',
-                'Circle',
-                'Erase',
-              ] as ToolType[]
-            ).map((t) => (
+            {[
+              ToolType.None,
+              ToolType.Select,
+              ToolType.Line,
+              ToolType.Rect,
+              ToolType.Circle,
+              ToolType.Erase,
+            ].map((t) => (
               <button
                 key={t}
                 className={`ticker-btn icon ${activeTool === t ? 'ticker-btn--active' : ''}`}

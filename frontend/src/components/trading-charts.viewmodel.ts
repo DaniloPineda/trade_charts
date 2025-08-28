@@ -8,7 +8,7 @@ class TradingChartsViewModel {
     // Component State
     ticker:string = process.env.REACT_APP_TICKER_SYMBOL || 'SPY';
     selectedPeriod: tickerData.TimePeriod = '1h';
-    activeTool: ToolType = 'None';
+    activeTool: ToolType = ToolType.None;
     isLoading: boolean = false;
     isChartReady: boolean = false;
     refresh: boolean = false;

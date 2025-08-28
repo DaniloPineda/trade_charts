@@ -1,6 +1,7 @@
 @use 'variables';
 @use 'mixins';
 @use 'components';
+@use 'buttons';
 
 // Global Reset and Base Styles
 * {
@@ -197,6 +198,40 @@ main {
         gap: variables.$spacing-xs;
       }
     }
+  }
+
+  //Favorite etfs
+  .favorite-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid #e5e7eb; /* gris suave */
+    background-color: #ffffff;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .favorite-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background-color: #f3f4f6; /* gris claro */
+    color: #374151; /* gris oscuro */
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+  }
+
+  .favorite-btn:hover {
+    background-color: #e5e7eb; /* hover gris más oscuro */
+  }
+
+  .favorite-btn.active {
+    background-color: #2563eb; /* azul */
+    color: white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   }
 
   // Control Panel
@@ -540,6 +575,7 @@ main {
   .App {
     .trading-chart-container {
       .chart-header {
+        width: 500px;
         .chart-title {
           font-size: variables.$font-size-2xl;
         }
@@ -605,7 +641,7 @@ main {
 
 // Focus styles for accessibility
 *:focus {
-  outline: 2px solid variables.$primary-color;
+  outline: 2px solid #b3b3b3;
   outline-offset: 2px;
 }
 

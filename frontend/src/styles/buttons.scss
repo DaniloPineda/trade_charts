@@ -1,0 +1,79 @@
+:root {
+  --bg: #0f172a; /* fondo app */
+  --panel: #111827; /* cards/panel */
+  --text: #e5e7eb; /* texto base */
+  --muted: #94a3b8; /* texto secundario */
+  --accent: #ffdc31; /* cian */
+  --accent-weak: #fff0c6;
+}
+
+.fav-row {
+  display: flex;
+  padding: 0.5rem 0.75rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  border-bottom: 1px solid #1f2937;
+}
+.fav-row::-webkit-scrollbar {
+  display: none;
+}
+
+.ticker-btn {
+  appearance: none;
+  border: 1px solid #1f2937;
+  background: linear-gradient(180deg, #0b1220, #0a101b);
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  transition:
+    transform 0.08s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ticker-btn:hover {
+  border-color: #8f8f8f;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.ticker-btn--active {
+  background: #ffd70087;
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px rgba(221, 214, 153, 0.918) inset,
+    0 6px 18px rgba(161, 142, 58, 0.842);
+}
+
+.toolbar .spacer {
+  flex: 1;
+}
+.compact-toggle {
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.compact .toolbar,
+.compact .statusbar {
+  display: none;
+} /* más espacio al chart */
+.chart-wrap {
+  position: relative;
+  height: calc(100vh - 180px);
+}
+.compact .chart-wrap {
+  height: calc(100vh - 110px);
+}
+
+.chart-wrap {
+  position: relative;
+  overflow: hidden;
+}
+.fav-row,
+.toolbar {
+  position: relative;
+  z-index: 10;
+} /* por si acaso */

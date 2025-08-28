@@ -30,21 +30,6 @@ services:
     depends_on:
       - backend
 
-  ticker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: trade_charts_ticker
-    command: ["/app/backend/scripts/ticker-entrypoint.sh"]
-    volumes:
-      - ./backend:/app/backend
-      - ./backend/scripts:/app/backend/scripts
-    environment:
-      - REDIS_HOST=redis
-      - TICKER_SYMBOL=${TICKER_SYMBOL}
-    depends_on:
-      - redis
-      - backend
   nginx:
     image: nginx:stable-alpine
     container_name: trade_charts_nginx
@@ -57,3 +42,19 @@ services:
     depends_on:
       - frontend
       - backend
+
+  # ticker:
+  # build:
+  #   context: ./backend
+  #   dockerfile: Dockerfile
+  # container_name: trade_charts_ticker
+  # command: ["/app/backend/scripts/ticker-entrypoint.sh"]
+  # volumes:
+  #   - ./backend:/app/backend
+  #   - ./backend/scripts:/app/backend/scripts
+  # environment:
+  #   - REDIS_HOST=redis
+  #   - TICKER_SYMBOL=${TICKER_SYMBOL}
+  # depends_on:
+  #   - redis
+  #   - backend

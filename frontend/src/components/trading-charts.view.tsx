@@ -1,11 +1,14 @@
-import React, { FC, useCallback, useEffect, useRef } from 'react';
+import React, { FC, useEffect, useRef } from 'react';
+import './../styles/charts.scss';
 import {
-  UTCTimestamp,
   createChart,
+  ColorType,
   LineStyle,
   CandlestickSeries,
-  IChartApi,
-  ISeriesApi,
+  HistogramSeries,
+  LineSeries,
+  type IChartApi,
+  type ISeriesApi,
 } from 'lightweight-charts';
 import SymbolSearch from './symbol-search/symbol-search.view';
 import { CandleData, TimePeriod } from '../dtos/ticker-data.dto';
@@ -16,14 +19,50 @@ import {
   formatChangePercent,
   formatPrice,
   formatVolume,
-  getIntervalSeconds,
+  toTs,
 } from '../utils/chart-utils';
+import DrawingCanvas from './drawing-canvas';
+import { sma } from '../utils/indicators';
+import { DrawIcon, ToolType } from './shared';
+import TimeScrollbar from './time-scrollbar';
+
+const favoriteETFs = [
+  'SPY',
+  'QQQ',
+  'TNA',
+  'NVDA',
+  'AAPL',
+  'META',
+  'AMZN',
+  'TSLA',
+  'NFLX',
+  'PLTR',
+  'BAC',
+  'SLV',
+  'GLD',
+  'CVX',
+  'XOM',
+];
+const FUTURE_BARS = 15;
 
 const TradingChart: FC<any> = observer(() => {
   const lastTimestampRef = useRef<number | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const totalBarsRef = useRef(0);
+
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  const s20Ref = useRef<ISeriesApi<'Line'> | null>(null);
+  const s40Ref = useRef<ISeriesApi<'Line'> | null>(null);
+  const s100Ref = useRef<ISeriesApi<'Line'> | null>(null);
+  const s200Ref = useRef<ISeriesApi<'Line'> | null>(null);
+
+  // local cache (evitamos .data() que no existe en v5)
+  const barsRef = useRef<CandleData[]>([]);
+  const lastBarRef = useRef<CandleData | null>(null);
+  const prevBarRef = useRef<CandleData | null>(null);
+
   let webSocket: WebSocket | null = null;
 
   const {
@@ -37,6 +76,7 @@ const TradingChart: FC<any> = observer(() => {
     volume,
     high24h,
     low24h,
+    refresh,
     timePeriods,
     setIsChartReady,
     setIsLoading,
@@ -49,308 +89,311 @@ const TradingChart: FC<any> = observer(() => {
     setHigh24h,
     setLow24h,
     setVolume,
+    setRefresh,
   } = tradingChartsViewModel;
 
+  // Create chart & series
   useEffect(() => {
-    const initializeCharts = (): IChartApi | null => {
-      if (!chartContainerRef.current) return null;
-      setIsLoading(true);
-      const chart = createChart(chartContainerRef.current, {
+    if (!chartContainerRef.current) return;
+
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+    }
+    setIsLoading(true);
+
+    const chart = createChart(chartContainerRef.current, {
+      width: chartContainerRef.current.clientWidth,
+      height: window.innerWidth >= 1024 ? window.innerHeight - 300 : 400,
+      layout: {
+        background: { type: ColorType.Solid, color: '#0f172a' },
+        textColor: '#e5e7eb',
+      },
+      grid: {
+        vertLines: { color: '#1f2937' },
+        horzLines: { color: '#1f2937' },
+      },
+      crosshair: {
+        mode: 1,
+        vertLine: { color: '#2563eb', width: 1, style: LineStyle.Dotted },
+        horzLine: { color: '#2563eb', width: 1, style: LineStyle.Dotted },
+      },
+      rightPriceScale: { borderColor: '#334155' },
+      timeScale: {
+        borderColor: '#334155',
+        timeVisible: true,
+        secondsVisible: false,
+      },
+    });
+
+    const candle = chart.addSeries(CandlestickSeries, {
+      upColor: '#10b981',
+      downColor: '#ef4444',
+      borderVisible: false,
+      wickUpColor: '#10b981',
+      wickDownColor: '#ef4444',
+    });
+
+    const volume = chart.addSeries(HistogramSeries, {
+      priceScaleId: '',
+      priceFormat: { type: 'volume' },
+      base: 0,
+    });
+
+    const s20 = chart.addSeries(LineSeries, { color: '#22d3ee', lineWidth: 2 });
+    const s40 = chart.addSeries(LineSeries, { color: '#a78bfa', lineWidth: 2 });
+    const s100 = chart.addSeries(LineSeries, {
+      color: '#f59e0b',
+      lineWidth: 2,
+    });
+    const s200 = chart.addSeries(LineSeries, {
+      color: '#ef4444',
+      lineWidth: 2,
+    });
+
+    chartRef.current = chart;
+    candleSeriesRef.current = candle;
+    volumeSeriesRef.current = volume;
+    s20Ref.current = s20;
+    s40Ref.current = s40;
+    s100Ref.current = s100;
+    s200Ref.current = s200;
+
+    (async () => {
+      const raw = await getHistoricalData(); // [{time, open, high, low, close, volume}]
+      const rows: CandleData[] = raw.map((r) => ({
+        time: toTs(r.time),
+        open: r.open,
+        high: r.high,
+        low: r.low,
+        close: r.close,
+        volume: r.volume,
+      }));
+
+      barsRef.current = rows;
+      lastBarRef.current = rows.at(-1) ?? null;
+      prevBarRef.current = rows.at(-2) ?? null;
+
+      candle.setData(rows);
+      volume.setData(rows.map((r) => ({ time: r.time, value: r.volume })));
+
+      s20.setData(sma(rows, 20));
+      s40.setData(sma(rows, 40));
+      s100.setData(sma(rows, 100));
+      s200.setData(sma(rows, 200));
+
+      chart.timeScale().scrollToPosition(-FUTURE_BARS, false);
+
+      if (rows.length)
+        lastTimestampRef.current = rows[rows.length - 1].time as number;
+      setIsChartReady();
+      setIsLoading(false);
+    })();
+
+    const ro = new ResizeObserver(() => {
+      if (!chartContainerRef.current || !chartRef.current) return;
+      chartRef.current.applyOptions({
         width: chartContainerRef.current.clientWidth,
         height: window.innerWidth >= 1024 ? window.innerHeight - 300 : 400,
-        layout: {
-          background: { color: '#ffffff' },
-          textColor: '#374151',
-        },
-        grid: {
-          vertLines: { color: '#e5e7eb' },
-          horzLines: { color: '#e5e7eb' },
-        },
-        crosshair: {
-          mode: 1, // Magnet mode
-          vertLine: { color: '#2563eb', width: 1, style: LineStyle.Dotted },
-          horzLine: { color: '#2563eb', width: 1, style: LineStyle.Dotted },
-        },
-        rightPriceScale: { borderColor: '#e5e7eb' },
-        timeScale: {
-          borderColor: '#e5e7eb',
-          timeVisible: true,
-          secondsVisible: false,
-        },
       });
-
-      const candleSeries = chart.addSeries(CandlestickSeries, {
-        upColor: '#10b981',
-        downColor: '#ef4444',
-        borderVisible: false,
-        wickUpColor: '#10b981',
-        wickDownColor: '#ef4444',
-      });
-
-      chartRef.current = chart;
-      candleSeriesRef.current = candleSeries;
-      setIsChartReady();
-      return chart;
-    };
-
-    const loadInitialData = async () => {
-      if (candleSeriesRef.current && chartRef.current) {
-        const initialData = await getHistoricalData();
-        candleSeriesRef.current.setData(initialData);
-        chartRef.current.timeScale().fitContent();
-
-        if (initialData.length > 0) {
-          lastTimestampRef.current = initialData[initialData.length - 1]
-            .time as number;
-        }
-        setIsLoading(false);
-      }
-    };
-
-    const chart = initializeCharts();
-    loadInitialData();
-
-    const handleResize = () =>
-      chart?.applyOptions({ width: chartContainerRef.current!.clientWidth });
-
-    window.addEventListener('resize', handleResize);
+    });
+    ro.observe(chartContainerRef.current);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      chart?.remove();
+      ro.disconnect();
+      chart.remove();
+      chartRef.current = null;
+      candleSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+      s20Ref.current =
+        s40Ref.current =
+        s100Ref.current =
+        s200Ref.current =
+          null;
     };
   }, []);
 
+  // Load by ticker/period + (optional) live
   useEffect(() => {
     if (!isChartReady || !candleSeriesRef.current || !chartRef.current) return;
+    const chart = chartRef.current;
 
-    const subscribeLiveData = async () => {
+    const fetchAndSet = async () => {
       setIsLoading(true);
       try {
-        const data = await getHistoricalData();
-        candleSeriesRef.current?.setData(data);
-        chartRef.current?.timeScale()?.fitContent();
-        if (data.length > 0) {
-          lastTimestampRef.current = data[data.length - 1].time as number;
-        }
+        const prevPos = chart.timeScale().scrollPosition();
+        const raw = await getHistoricalData();
+        const rows: CandleData[] = raw.map((r) => ({
+          time: toTs(r.time),
+          open: r.open,
+          high: r.high,
+          low: r.low,
+          close: r.close,
+          volume: r.volume,
+        }));
+
+        barsRef.current = rows;
+        lastBarRef.current = rows.at(-1) ?? null;
+        prevBarRef.current = rows.at(-2) ?? null;
+
+        candleSeriesRef.current!.setData(rows);
+        volumeSeriesRef.current!.setData(
+          rows.map((r) => ({ time: r.time, value: r.volume }))
+        );
+        totalBarsRef.current = rows.length;
+
+        s20Ref.current!.setData(sma(rows, 20));
+        s40Ref.current!.setData(sma(rows, 40));
+        s100Ref.current!.setData(sma(rows, 100));
+        s200Ref.current!.setData(sma(rows, 200));
+
+        if (prevPos !== 0) chart.timeScale().scrollToPosition(prevPos, false);
+        else chart.timeScale().scrollToPosition(-FUTURE_BARS, false);
+
+        if (rows.length)
+          lastTimestampRef.current = rows[rows.length - 1].time as number;
+      } finally {
         setIsLoading(false);
-        establishWebSocketConnection();
-      } catch (err) {
-        console.error('Failed to fetch historical data:', err);
-        setIsLoading(false);
+        setRefresh(false);
       }
     };
 
-    const establishWebSocketConnection = () => {
-      webSocket = new WebSocket(`ws://localhost:3000/ws/ticks/${ticker}/`);
-      webSocket.onopen = () => console.log(`${ticker} WebSocket Connected!`);
-      webSocket.onclose = () =>
-        console.log(`${ticker} WebSocket Disconnected.`);
-      webSocket.onerror = (error) =>
-        console.error(`${ticker} WebSocket Error:`, error);
+    fetchAndSet();
 
-      webSocket.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-
-        if (msg.type !== 'ticker.update') return;
-
-        const tick = msg.payload;
-
-        // Ensure tick.time is always a number in seconds
-        let tickSeconds = Number(tick.time);
-        if (tickSeconds > 1e12) {
-          // It's in ms
-          tickSeconds = Math.floor(tickSeconds / 1000);
-        }
-
-        const intervalSeconds = getIntervalSeconds(selectedPeriod);
-
-        // Align the candle start time to the interval
-        const candleTimestamp = Math.floor(
-          tickSeconds - (tickSeconds % intervalSeconds)
-        ) as UTCTimestamp;
-
-        const newCandle = {
-          time: candleTimestamp,
-          open: tick.open,
-          high: tick.high,
-          low: tick.low,
-          close: tick.close,
-        };
-
-        // Get the last candle on the chart
-        const candleSeriesData = candleSeriesRef.current?.data?.() || [];
-        const lastCandle = candleSeriesData[
-          candleSeriesData.length - 1
-        ] as CandleData;
-        const previousCandle = candleSeriesData[
-          candleSeriesData.length - 2
-        ] as CandleData;
-
-        setLastPrice(tick.close);
-
-        if (!lastCandle) {
-          candleSeriesRef.current?.update(newCandle);
-          return;
-        }
-
-        setPriceChange(previousCandle.close as number);
-        setVolume(tick.volume as number);
-
-        // Calculate additional metrics
-        const prices = candleSeriesData.map((d: any) => d.close as number);
-        setHigh24h(Math.max(...prices));
-        setLow24h(Math.min(...prices));
-
-        if (lastCandle.time === candleTimestamp) {
-          // Update existing candle
-          candleSeriesRef.current?.update(newCandle);
-        } else if (candleTimestamp > (lastCandle.time as number)) {
-          // Add new candle
-          candleSeriesRef.current?.update(newCandle);
-        }
-      };
-    };
-
-    subscribeLiveData();
+    // Live (opcional)
+    // const ws = new WebSocket(`ws://localhost:3000/ws/ticks/${ticker}/`);
+    // webSocket = ws; ...
 
     return () => {
       if (webSocket) {
-        console.log(`Closing WebSocket for ${ticker} | ${selectedPeriod}.`);
         webSocket.close();
+        webSocket = null;
       }
     };
-  }, [ticker, selectedPeriod, isChartReady]);
+  }, [ticker, selectedPeriod, isChartReady, refresh]);
 
-  const handleSymbolSelected = (selectedSymbol: string) => {
-    setTicker(selectedSymbol);
-  };
-
-  const handlePeriodChange = (period: TimePeriod) => {
-    setSelectedPeriod(period);
-  };
-
-  const handleToolClick = (tool: string) => {
-    setActiveTool(activeTool === tool ? 'none' : tool);
-  };
+  const handleSymbolSelected = (s: string) => setTicker(s);
+  const handlePeriodChange = (p: TimePeriod) => setSelectedPeriod(p);
+  const handleToolClick = (tool: ToolType) =>
+    setActiveTool(activeTool === tool ? 'None' : tool);
 
   return (
-    <div className="trading-chart-container">
-      <div className="chart-header">
-        <h2 className="chart-title">Gráfico de {ticker}</h2>
-        <div className="chart-controls">
-          <SymbolSearch onSymbolSelect={handleSymbolSelected} />
-        </div>
-      </div>
-
-      <div className="control-panel">
-        <div className="control-row">
-          <div className="control-group">
-            <span className="control-label">Indicador:</span>
-            <select className="control-select">
-              <option value="none">Ninguno</option>
-              <option value="sma">SMA</option>
-              <option value="ema">EMA</option>
-              <option value="bollinger">Bollinger Bands</option>
-              <option value="rsi">RSI</option>
-            </select>
+    <div className={`chart-wrap`}>
+      <div className="trading-chart-container">
+        <div className="toolbar">
+          <div className="fav-row">
+            {favoriteETFs.map((sym) => (
+              <button
+                key={sym}
+                className={`ticker-btn ${ticker === sym ? 'ticker-btn--active' : ''}`}
+                onClick={() => setTicker(sym)}
+              >
+                {sym}
+              </button>
+            ))}
+            <button onClick={() => setRefresh(true)}>Refresh</button>
           </div>
+        </div>
 
-          <div className="control-group">
-            <span className="control-label">Período:</span>
-            <input
-              type="number"
-              className="control-input"
-              placeholder="14"
-              min="1"
-              max="200"
+        <div className="chart-header">
+          <h2 className="chart-title">Gráfico de {ticker}</h2>
+          <div className="chart-controls">
+            <SymbolSearch onSymbolSelect={handleSymbolSelected} />
+          </div>
+        </div>
+
+        <div className={`chart-area ${isLoading ? 'loading' : ''}`}>
+          <div ref={chartContainerRef} className="chart-container" />
+          {chartRef.current && (
+            <TimeScrollbar
+              chart={chartRef.current}
+              totalBars={totalBarsRef.current}
+              futureBars={120}
             />
+          )}
+          {chartRef.current &&
+            candleSeriesRef.current &&
+            chartContainerRef.current && (
+              <DrawingCanvas
+                targetRef={chartContainerRef}
+                chart={chartRef.current}
+                series={candleSeriesRef.current}
+                storageKey={`${ticker}:${selectedPeriod}`}
+                tool={activeTool as any}
+                onFinishDraw={() => setActiveTool('None')}
+              />
+            )}
+        </div>
+
+        <div className="chart-info">
+          <div
+            className={`info-item ${priceChange && priceChange >= 0 ? 'positive' : 'negative'}`}
+          >
+            <span className="label">Precio:</span>
+            <span className="value">{formatPrice(lastPrice)}</span>
           </div>
-
-          <div className="tool-buttons">
-            <button
-              className={`tool-btn ${activeTool === 'trendline' ? 'active' : ''}`}
-              onClick={() => handleToolClick('trendline')}
-              title="Línea de tendencia"
-            >
-              📈
-            </button>
-            <button
-              className={`tool-btn ${activeTool === 'fibonacci' ? 'active' : ''}`}
-              onClick={() => handleToolClick('fibonacci')}
-              title="Retroceso Fibonacci"
-            >
-              📊
-            </button>
-            <button
-              className={`tool-btn ${activeTool === 'measure' ? 'active' : ''}`}
-              onClick={() => handleToolClick('measure')}
-              title="Medir distancia"
-            >
-              📏
-            </button>
-            <button
-              className={`tool-btn ${activeTool === 'draw' ? 'active' : ''}`}
-              onClick={() => handleToolClick('draw')}
-              title="Dibujar"
-            >
-              ✏️
-            </button>
+          <div
+            className={`info-item ${priceChange && priceChange >= 0 ? 'positive' : 'negative'}`}
+          >
+            <span className="label">Cambio:</span>
+            <span className="value">{formatChange(priceChange)}</span>
+          </div>
+          <div
+            className={`info-item ${priceChange && priceChange >= 0 ? 'positive' : 'negative'}`}
+          >
+            <span className="label">%:</span>
+            <span className="value">
+              {formatChangePercent(priceChange, lastPrice)}
+            </span>
+          </div>
+          <div className="info-item">
+            <span className="label">Vol:</span>
+            <span className="value">{formatVolume(volume)}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Máx:</span>
+            <span className="value">{formatPrice(high24h)}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Mín:</span>
+            <span className="value">{formatPrice(low24h)}</span>
           </div>
         </div>
-      </div>
-      <div className={`chart-area ${isLoading ? 'loading' : ''}`}>
-        <div ref={chartContainerRef} className="chart-container" />
-      </div>
 
-      {/* --- Info Bar --- */}
-      <div className="chart-info">
-        <div
-          className={`info-item ${priceChange && priceChange >= 0 ? 'positive' : 'negative'}`}
-        >
-          <span className="label">Precio:</span>
-          <span className="value">{formatPrice(lastPrice)}</span>
-        </div>
-        <div
-          className={`info-item ${priceChange && priceChange >= 0 ? 'positive' : 'negative'}`}
-        >
-          <span className="label">Cambio:</span>
-          <span className="value">{formatChange(priceChange)}</span>
-        </div>
-        <div
-          className={`info-item ${priceChange && priceChange >= 0 ? 'positive' : 'negative'}`}
-        >
-          <span className="label">%:</span>
-          <span className="value">
-            {formatChangePercent(priceChange, lastPrice)}
-          </span>
-        </div>
-        <div className="info-item">
-          <span className="label">Vol:</span>
-          <span className="value">{formatVolume(volume)}</span>
-        </div>
-        <div className="info-item">
-          <span className="label">Máx:</span>
-          <span className="value">{formatPrice(high24h)}</span>
-        </div>
-        <div className="info-item">
-          <span className="label">Mín:</span>
-          <span className="value">{formatPrice(low24h)}</span>
-        </div>
-      </div>
-
-      {/* -- Time period selector -- */}
-      <div className="time-period-bar">
-        <div className="period-buttons">
-          {timePeriods.map((period) => (
-            <button
-              key={period}
-              className={`period-btn ${selectedPeriod === period ? 'active' : ''}`}
-              onClick={() => handlePeriodChange(period)}
-            >
-              {period}
-            </button>
-          ))}
+        <div className="time-period-bar">
+          <div className="period-buttons">
+            {timePeriods.map((period) => (
+              <button
+                key={period}
+                className={`period-btn ${selectedPeriod === period ? 'active' : ''}`}
+                onClick={() => handlePeriodChange(period)}
+              >
+                {period}
+              </button>
+            ))}
+          </div>
+          <div className="draw-tools">
+            {(
+              [
+                'None',
+                'Select',
+                'Line',
+                'Rect',
+                'Circle',
+                'Erase',
+              ] as ToolType[]
+            ).map((t) => (
+              <button
+                key={t}
+                className={`ticker-btn icon ${activeTool === t ? 'ticker-btn--active' : ''}`}
+                onClick={() => handleToolClick(t)}
+                aria-label={t}
+                title={t}
+              >
+                <DrawIcon type={t} />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

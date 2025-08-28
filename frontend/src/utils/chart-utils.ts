@@ -1,3 +1,4 @@
+import { UTCTimestamp } from "lightweight-charts";
 import { TimePeriod } from "../dtos/ticker-data.dto";
 
 export const getIntervalSeconds = (period: TimePeriod): number => {
@@ -53,3 +54,6 @@ export const formatVolume = (volume: number | null): string => {
   }
   return volume.toString();
 };
+
+export const toTs = (t: number): UTCTimestamp => Math.floor(t / 1000) as UTCTimestamp;
+

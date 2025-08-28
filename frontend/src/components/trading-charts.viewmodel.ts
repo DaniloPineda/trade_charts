@@ -2,14 +2,16 @@ import * as tickerData from "../dtos/ticker-data.dto";
 import { action, makeObservable, observable } from "mobx";
 import FinhubService from "../services/finhub.service";
 import Container from "typedi";
+import { ToolType } from "./shared";
 
 class TradingChartsViewModel {  
     // Component State
     ticker:string = process.env.REACT_APP_TICKER_SYMBOL || 'SPY';
     selectedPeriod: tickerData.TimePeriod = '1h';
-    activeTool: string = 'none';
+    activeTool: ToolType = 'None';
     isLoading: boolean = false;
     isChartReady: boolean = false;
+    refresh: boolean = false;
   
     // State for the info bar
     lastPrice: number | null = null;
@@ -31,6 +33,7 @@ class TradingChartsViewModel {
             volume: observable,
             high24h: observable,
             low24h: observable,
+            refresh: observable,
             //Actions
             setIsChartReady: action,
             setIsLoading: action,
@@ -42,6 +45,7 @@ class TradingChartsViewModel {
             setHigh24h: action,
             setLow24h: action,
             setVolume: action,
+            setRefresh: action,
         })
     }
 
@@ -72,7 +76,7 @@ class TradingChartsViewModel {
     this.selectedPeriod = period;
   }
 
-  setActiveTool = (tool: string) => {
+  setActiveTool = (tool: ToolType) => {
     this.activeTool = tool;
   }
 
@@ -94,6 +98,10 @@ class TradingChartsViewModel {
 
   setVolume = (vol: number) => {
     this.volume = vol;
+  }
+
+  setRefresh = (refresh: boolean) => {
+    this.refresh = refresh;
   }
 
   getHistoricalData = async() => {

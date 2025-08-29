@@ -6,6 +6,7 @@ import type {
   ISeriesApi,
   UTCTimestamp,
   Logical,
+  Coordinate,
 } from 'lightweight-charts';
 import { ToolType } from './shared';
 
@@ -23,25 +24,52 @@ const HANDLE_R = 6;
 const PALETTE = ['#22d3ee', '#f59e0b', '#a78bfa', '#ef4444', '#10b981'];
 const L = (n: number) => n as unknown as Logical;
 const LN = (l: Logical) => l as unknown as number;
+const CN = (c: Coordinate): number => c as unknown as number;
 
-// ===== Store (MobX v6) =====
 class DrawingStore {
   shapes: Shape[] = [];
   draft: Shape | null = null;
   selectedId: string | null = null;
-  dirty = 0; // bump para repintar
+  dirty = 0;
   stroke = PALETTE[0];
   width = 2;
   hoverId: string | null = null;
+  drawingsVisible = true;
+  globalStroke = PALETTE[0];
+  globalWidth = 2;
 
   constructor(public storageKey: string) {
     makeAutoObservable(this);
     this.load();
   }
 
-  setStyle(stroke: string, width = 2) {
-    this.stroke = stroke;
-    this.width = width;
+  setGlobalStyle(partial: { stroke?: string; width?: number }) {
+    if (partial.stroke) this.globalStroke = partial.stroke;
+    if (partial.width) this.globalWidth = partial.width;
+    this.stroke = this.globalStroke;
+    this.width = this.globalWidth;
+    this.bump();
+  }
+
+  updateDraftStyle(partial: { stroke?: string; width?: number }) {
+    if (!this.draft) return;
+    this.draft = { ...this.draft, ...partial } as Shape;
+    this.bump(); // no guardes aquí; el draft se persiste en commitDraft()
+  }
+
+  toggleVisibility() {
+    this.drawingsVisible = !this.drawingsVisible;
+    this.bump();
+  }
+
+  updateSelectedStyle(partial: { stroke?: string; width?: number }) {
+    // NEW
+    if (!this.selectedId) return;
+    this.shapes = this.shapes.map((s) =>
+      s.id === this.selectedId ? ({ ...s, ...partial } as Shape) : s
+    );
+    this.save();
+    this.bump();
   }
 
   setHover(id: string | null) {
@@ -52,8 +80,8 @@ class DrawingStore {
   startDraft(tool: ToolType, p: DataPt) {
     const base = {
       id: crypto.randomUUID(),
-      stroke: this.stroke,
-      width: this.width,
+      stroke: this.globalStroke,
+      width: this.globalWidth,
     };
     if (tool === ToolType.Line)
       this.draft = { ...base, t: ToolType.Line, a: p, b: p };
@@ -147,11 +175,19 @@ class DrawingStore {
     );
   }
   load() {
+    const isValid = (s: any): s is Shape => {
+      if (!s || !s.t || !s.id) return false;
+      const okPt = (p: any) =>
+        p && p.logical != null && typeof p.price === 'number';
+      if (s.t === 'Line' || s.t === 'Rect') return okPt(s.a) && okPt(s.b);
+      if (s.t === 'Circle') return okPt(s.c) && okPt(s.e);
+      return false;
+    };
     try {
       const raw = localStorage.getItem(`draw:${this.storageKey}`);
       if (!raw) return;
-      const arr = JSON.parse(raw) as Shape[];
-      if (Array.isArray(arr)) this.shapes = arr;
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) this.shapes = arr.filter(isValid);
     } catch {}
   }
 
@@ -167,12 +203,26 @@ type Props = {
   series: ISeriesApi<'Candlestick'> | null;
   storageKey: string;
   tool: ToolType;
+  drawingColor?: string;
+  drawingWidth?: number;
+  drawingsVisible?: boolean;
   onFinishDraw?: () => void;
   onSetTool?: (t: ToolType) => void;
 };
 
 const DrawingCanvas: React.FC<Props> = observer(
-  ({ targetRef, chart, series, storageKey, tool, onFinishDraw, onSetTool }) => {
+  ({
+    targetRef,
+    chart,
+    series,
+    storageKey,
+    tool,
+    drawingColor,
+    drawingWidth,
+    drawingsVisible,
+    onFinishDraw,
+    onSetTool,
+  }) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const dragRef = useRef<{
       mode: 'move' | 'handle' | null;
@@ -193,6 +243,52 @@ const DrawingCanvas: React.FC<Props> = observer(
       series?.priceToCoordinate(p) ?? null;
     const yToPrice = (y: number): number | null =>
       series?.coordinateToPrice(y) ?? null;
+
+    const isScalingRef = useRef(false);
+    const pxCache = useRef<Map<string, { x: number; y: number }>>(new Map());
+    const bufferRef = useRef<HTMLCanvasElement | null>(null);
+    let rafId: number | null = null;
+
+    const scheduleRedraw = () => {
+      if (rafId != null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        redraw();
+      });
+    };
+
+    // add inside component
+    const onCanvasContextMenu: React.MouseEventHandler<HTMLCanvasElement> = (
+      e
+    ) => {
+      // permitir borrar en None o Select (ajusta si quieres en cualquier modo)
+      e.preventDefault();
+      const allow = tool === ToolType.None || tool === ToolType.Select;
+
+      // posición relativa al canvas
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // si estabas dibujando, usa right-click como "cancel draft"
+      if (store.draft) {
+        e.preventDefault();
+        store.draft = null;
+        store.bump();
+        setCursor('default');
+        return;
+      }
+
+      // borrar figura si hay una debajo
+      const id = hitShapeIdAt(x, y);
+      if (allow && id) {
+        e.preventDefault(); // bloquea menú nativo SOLO si borramos
+        store.Erase(id);
+        store.select(null);
+        setCursor('default');
+      }
+      // si no hay figura, dejamos que salga el menú del navegador
+    };
 
     const visibleLogicalSafe = (): LogicalRange | null => {
       const scale = ts();
@@ -228,6 +324,114 @@ const DrawingCanvas: React.FC<Props> = observer(
       return { x, y };
     };
 
+    const getPt = (s: Shape, key: 'a' | 'b' | 'c' | 'e'): DataPt | null => {
+      const v = (s as any)[key];
+      if (!v || v.logical == null || typeof v.price !== 'number') return null;
+      return v as DataPt;
+    };
+
+    const toPxWithCache = (
+      shapeId: string,
+      key: 'a' | 'b' | 'c' | 'e',
+      d: DataPt | null | undefined
+    ): { x: number; y: number } | null => {
+      const c = canvasRef.current;
+      if (!c || !d || d.logical == null || typeof d.price !== 'number')
+        return null;
+
+      // X
+      let x: number | null = null;
+      const cx = ts()?.logicalToCoordinate(d.logical);
+      x = cx != null ? CN(cx) : null;
+      if (x == null) {
+        const vr = visibleLogicalSafe();
+        if (vr) {
+          const from = LN(vr.from),
+            to = LN(vr.to),
+            l = LN(d.logical);
+          x = l < from ? 0 : l > to ? c.clientWidth : null;
+        }
+      }
+
+      // Y
+      let y: number | null = null;
+      const cy = (series as any)?.priceToCoordinate?.(d.price);
+      y = cy != null ? CN(cy as Coordinate) : null;
+
+      const cacheKey = `${shapeId}:${key}`;
+      const prev = pxCache.current.get(cacheKey);
+      if (y == null && prev && isScalingRef.current) y = prev.y;
+
+      if (x != null && y != null) {
+        pxCache.current.set(cacheKey, { x, y });
+        return { x, y };
+      }
+      return null;
+    };
+
+    useEffect(() => {
+      if (!chart) return;
+      const ts = chart.timeScale();
+      let tm: any;
+
+      const onRange = () => {
+        isScalingRef.current = true;
+        scheduleRedraw();
+        clearTimeout(tm);
+        tm = setTimeout(() => {
+          isScalingRef.current = false;
+          scheduleRedraw();
+        }, 120); // un pelín más largo para figuras grandes
+      };
+
+      ts.subscribeVisibleTimeRangeChange(onRange);
+      (ts as any).subscribeVisibleLogicalRangeChange?.(onRange);
+      return () => {
+        clearTimeout(tm);
+        ts.unsubscribeVisibleTimeRangeChange(onRange);
+        (ts as any).unsubscribeVisibleLogicalRangeChange?.(onRange);
+      };
+    }, [chart]);
+
+    useEffect(() => {
+      const host = targetRef.current;
+      const c = canvasRef.current;
+      if (!host || !c) return;
+
+      const ensureBufferSize = (w: number, h: number, dpr: number) => {
+        if (!bufferRef.current)
+          bufferRef.current = document.createElement('canvas');
+        const buf = bufferRef.current;
+        if (
+          buf.width !== Math.round(w * dpr) ||
+          buf.height !== Math.round(h * dpr)
+        ) {
+          buf.width = Math.round(w * dpr);
+          buf.height = Math.round(h * dpr);
+        }
+      };
+
+      const resize = () => {
+        const dpr = window.devicePixelRatio || 1,
+          w = host.clientWidth,
+          h = host.clientHeight;
+        c.style.width = `${w}px`;
+        c.style.height = `${h}px`;
+        c.width = Math.round(w * dpr);
+        c.height = Math.round(h * dpr);
+        const ctx = c.getContext('2d');
+        if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ensureBufferSize(w, h, dpr);
+        scheduleRedraw();
+      };
+
+      const ro = new ResizeObserver(resize);
+      ro.observe(host);
+      resize();
+      pxCache.current.clear();
+      return () => ro.disconnect();
+    }, [targetRef]);
+
     // --- tamaño HiDPI
     useEffect(() => {
       const host = targetRef.current;
@@ -252,15 +456,6 @@ const DrawingCanvas: React.FC<Props> = observer(
       return () => ro.disconnect();
     }, [targetRef]);
 
-    // --- repintar en: cambios de store, zoom/pan del chart, o tool
-    useEffect(() => {
-      const dispose = autorun(() => {
-        void store.dirty;
-        redraw();
-      }); // se dispara cuando store cambia
-      return () => dispose();
-    }, [store]);
-
     useEffect(() => {
       redraw();
     }, [tool, chart, series]);
@@ -277,7 +472,6 @@ const DrawingCanvas: React.FC<Props> = observer(
       };
     }, [chart]);
 
-    // REPLACE your existing host hover/click effect with this unified one:
     useEffect(() => {
       const host = targetRef.current;
       if (!host || !chart || !series) return;
@@ -377,6 +571,81 @@ const DrawingCanvas: React.FC<Props> = observer(
       };
     }, [targetRef, chart, series, tool, onSetTool]);
 
+    // Right-click delete (and Ctrl+Click on Mac)
+    useEffect(() => {
+      const host = targetRef.current;
+      if (!host || !chart || !series) return;
+
+      const getXY = (ev: MouseEvent | PointerEvent) => {
+        const rect = (canvasRef.current ?? host).getBoundingClientRect();
+        return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+      };
+
+      const tryDelete = (x: number, y: number, ev: Event) => {
+        // Solo en None o Select, y si no estás arrastrando
+        if (tool !== ToolType.None && tool !== ToolType.Select) return;
+        if ((dragRef as any)?.current?.mode) return;
+        if (store.drawingsVisible === false) return;
+
+        const id = hitShapeIdAt(x, y);
+        if (!id) return; // nada debajo → deja el menú nativo
+
+        ev.preventDefault(); // bloquea el menú
+        ev.stopPropagation();
+        store.Erase(id);
+        store.select(null);
+        setCursor(
+          tool === ToolType.None
+            ? 'default'
+            : store.hoverId
+              ? 'pointer'
+              : 'default'
+        );
+      };
+
+      // Botón derecho (button===2) o Ctrl+Click (button===0 + ctrlKey) → borrar
+      const onPointerDown = (ev: PointerEvent) => {
+        if (ev.button === 2 || (ev.button === 0 && ev.ctrlKey)) {
+          const el = ev.currentTarget as HTMLCanvasElement;
+          const rect = el?.getBoundingClientRect?.();
+          const x = ev.clientX - rect.left,
+            y = ev.clientY - rect.top;
+
+          // opcional: no borres si los dibujos están ocultos
+          // if (store.drawingsVisible === false) return;
+
+          const id = hitShapeIdAt(x, y);
+          if ((tool === ToolType.None || tool === ToolType.Select) && id) {
+            ev.preventDefault();
+            store.Erase(id);
+            store.select(null);
+            setCursor('default');
+            return; // salimos, no seguimos con la lógica de dibujo/selección
+          }
+        }
+        const isRightClick = ev.button === 2;
+        const isCtrlClick = ev.button === 0 && ev.ctrlKey;
+        if (!isRightClick && !isCtrlClick) return;
+        const { x, y } = getXY(ev);
+        tryDelete(x, y, ev);
+      };
+
+      // Fallback por si algún navegador solo dispara contextmenu
+      const onContext = (ev: MouseEvent) => {
+        const { x, y } = getXY(ev);
+        tryDelete(x, y, ev);
+      };
+
+      // useCapture=true para adelantarnos al chart
+      host.addEventListener('pointerdown', onPointerDown, true);
+      host.addEventListener('contextmenu', onContext, true);
+
+      return () => {
+        host.removeEventListener('pointerdown', onPointerDown, true);
+        host.removeEventListener('contextmenu', onContext, true);
+      };
+    }, [targetRef, chart, series, tool, store.drawingsVisible]);
+
     useEffect(() => {
       const host = targetRef.current;
       if (!host || !chart || !series) return;
@@ -398,6 +667,56 @@ const DrawingCanvas: React.FC<Props> = observer(
     }, [targetRef, chart, series, tool, onSetTool]);
 
     useEffect(() => {
+      const stroke = drawingColor ?? store.globalStroke;
+      const width = drawingWidth ?? store.globalWidth;
+
+      // 1) Selected: solo si cambia
+      if (store.selectedId) {
+        const sel = store.shapes.find((s) => s.id === store.selectedId);
+        if (
+          sel &&
+          ((stroke && sel.stroke !== stroke) || (width && sel.width !== width))
+        ) {
+          store.updateSelectedStyle({ stroke, width });
+        }
+      }
+
+      // 2) Draft: solo si cambia
+      if (
+        store.draft &&
+        ((stroke && store.draft.stroke !== stroke) ||
+          (width && store.draft.width !== width))
+      ) {
+        store.updateDraftStyle({ stroke, width });
+      }
+
+      // 3) Defaults: solo si cambia
+      if (store.globalStroke !== stroke || store.globalWidth !== width) {
+        store.setGlobalStyle({ stroke, width });
+      }
+    }, [drawingColor, drawingWidth, store.selectedId]);
+
+    useEffect(() => {
+      if (typeof drawingsVisible === 'boolean') {
+        store.drawingsVisible = drawingsVisible;
+        store.bump();
+      }
+    }, [drawingsVisible]);
+
+    useEffect(() => {
+      const dispose = autorun(() => {
+        void store.dirty;
+        pxCache.current.clear();
+        scheduleRedraw();
+      });
+      return () => dispose();
+    }, [store]);
+
+    useEffect(() => {
+      scheduleRedraw();
+    }, [tool, chart, series]);
+
+    useEffect(() => {
       if (tool === ToolType.None) return setCursor('default');
       if (tool === ToolType.Erase) return setCursor('not-allowed');
       if (tool === ToolType.Select)
@@ -408,125 +727,169 @@ const DrawingCanvas: React.FC<Props> = observer(
       return setCursor('crosshair');
     }, [tool, store.hoverId, store.selectedId]);
 
-    // --- pintar
-    const redraw = () => {
-      const c = canvasRef.current;
-      if (!c) return;
-      const ctx = c.getContext('2d');
-      if (!ctx) return;
+    // y donde antes llamabas `redraw()` por tool/serie, usa `scheduleRedraw()`
+    useEffect(() => {
+      scheduleRedraw();
+    }, [tool, chart, series]);
 
-      // clear HiDPI
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, c.width, c.height);
-      ctx.restore();
+    const canLayoutAll = (): boolean => {
+      for (const s of store.shapes) {
+        if (s.t === 'Line') {
+          const a = getPt(s, 'a'),
+            b = getPt(s, 'b');
+          if (!a || !b) return false;
+          if (!toPxWithCache(s.id, 'a', a) || !toPxWithCache(s.id, 'b', b))
+            return false;
+        } else if (s.t === 'Rect') {
+          const a = getPt(s, 'a'),
+            b = getPt(s, 'b');
+          if (!a || !b) return false;
+          if (!toPxWithCache(s.id, 'a', a) || !toPxWithCache(s.id, 'b', b))
+            return false;
+        } else {
+          // Circle
+          const c = getPt(s, 'c'),
+            e = getPt(s, 'e');
+          if (!c || !e) return false;
+          if (!toPxWithCache(s.id, 'c', c) || !toPxWithCache(s.id, 'e', e))
+            return false;
+        }
+      }
+      if (store.draft) {
+        const d = store.draft as any;
+        const keys =
+          d.t === 'Circle' ? (['c', 'e'] as const) : (['a', 'b'] as const);
+        for (const k of keys) {
+          const p = getPt(d, k);
+          if (!p || !toPxWithCache(d.id, k, p)) return false;
+        }
+      }
+      return true;
+    };
+
+    const redraw = () => {
+      const c = canvasRef.current,
+        buf = bufferRef.current;
+      if (!c || !buf) return;
+      const ctx = c.getContext('2d')!,
+        bctx = buf.getContext('2d')!;
+      const dpr = window.devicePixelRatio || 1;
+
+      // Si estamos escalando y aún faltan coordenadas, NO borres: blitea el último buffer
+      if (isScalingRef.current && !canLayoutAll()) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, c.width, c.height);
+        ctx.drawImage(buf, 0, 0); // frame anterior
+        return;
+      }
+
+      // Limpiar y dibujar al BUFFER primero
+      bctx.setTransform(1, 0, 0, 1, 0, 0);
+      bctx.clearRect(0, 0, buf.width, buf.height);
+      bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const drawCtx = bctx; // usamos drawCtx en lugar de ctx dentro del dibujo
 
       const drawShape = (s: Shape) => {
-        ctx.lineWidth = s.width ?? 2;
-        ctx.strokeStyle = s.stroke ?? PALETTE[0];
-        if (s.t === ToolType.Line) {
-          const a = toPx(s.a),
-            b = toPx(s.b);
+        drawCtx.lineWidth = s.width ?? 2;
+        drawCtx.strokeStyle = s.stroke ?? PALETTE[0];
+        if (s.t === 'Line') {
+          const a = toPxWithCache(s.id, 'a', getPt(s, 'a'));
+          const b = toPxWithCache(s.id, 'b', getPt(s, 'b'));
+
           if (!a || !b) return;
-
-          // --- HOVER OUTLINE (NEW) ---
+          // hover outline…
           if (store.hoverId === s.id && store.selectedId !== s.id) {
-            ctx.save();
-            ctx.lineWidth = (s.width ?? 2) + 4;
-            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.stroke();
-            ctx.restore();
+            drawCtx.save();
+            drawCtx.lineWidth = (s.width ?? 2) + 4;
+            drawCtx.strokeStyle = 'rgba(255,255,255,0.35)';
+            drawCtx.beginPath();
+            drawCtx.moveTo(a.x, a.y);
+            drawCtx.lineTo(b.x, b.y);
+            drawCtx.stroke();
+            drawCtx.restore();
           }
-          // --- NORMAL ---
-          ctx.lineWidth = s.width ?? 2;
-          ctx.strokeStyle = s.stroke ?? PALETTE[0];
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
+          drawCtx.beginPath();
+          drawCtx.moveTo(a.x, a.y);
+          drawCtx.lineTo(b.x, b.y);
+          drawCtx.stroke();
         }
-
-        if (s.t === ToolType.Rect) {
-          const a = toPx(s.a),
-            b = toPx(s.b);
+        if (s.t === 'Rect') {
+          const a = toPxWithCache(s.id, 'a', getPt(s, 'a'));
+          const b = toPxWithCache(s.id, 'b', getPt(s, 'b'));
           if (!a || !b) return;
           const x = Math.min(a.x, b.x),
-            y = Math.min(a.y, b.y);
-          const w = Math.abs(a.x - b.x),
+            y = Math.min(a.y, b.y),
+            w = Math.abs(a.x - b.x),
             h = Math.abs(a.y - b.y);
-
           if (store.hoverId === s.id && store.selectedId !== s.id) {
-            ctx.save();
-            ctx.lineWidth = (s.width ?? 2) + 4;
-            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-            ctx.beginPath();
-            ctx.rect(x, y, w, h);
-            ctx.stroke();
-            ctx.restore();
+            drawCtx.save();
+            drawCtx.lineWidth = (s.width ?? 2) + 4;
+            drawCtx.strokeStyle = 'rgba(255,255,255,0.35)';
+            drawCtx.beginPath();
+            drawCtx.rect(x, y, w, h);
+            drawCtx.stroke();
+            drawCtx.restore();
           }
-          ctx.lineWidth = s.width ?? 2;
-          ctx.strokeStyle = s.stroke ?? PALETTE[0];
-          ctx.beginPath();
-          ctx.rect(x, y, w, h);
-          ctx.stroke();
+          drawCtx.beginPath();
+          drawCtx.rect(x, y, w, h);
+          drawCtx.stroke();
         }
-
-        if (s.t === ToolType.Circle) {
-          const cc = toPx(s.c),
-            ee = toPx(s.e);
+        if (s.t === 'Circle') {
+          const cc = toPxWithCache(s.id, 'c', getPt(s, 'c'));
+          const ee = toPxWithCache(s.id, 'e', getPt(s, 'e'));
           if (!cc || !ee) return;
           const r = Math.hypot(ee.x - cc.x, ee.y - cc.y);
-
           if (store.hoverId === s.id && store.selectedId !== s.id) {
-            ctx.save();
-            ctx.lineWidth = (s.width ?? 2) + 4;
-            ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-            ctx.beginPath();
-            ctx.arc(cc.x, cc.y, r, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.restore();
+            drawCtx.save();
+            drawCtx.lineWidth = (s.width ?? 2) + 4;
+            drawCtx.strokeStyle = 'rgba(255,255,255,0.35)';
+            drawCtx.beginPath();
+            drawCtx.arc(cc.x, cc.y, r, 0, Math.PI * 2);
+            drawCtx.stroke();
+            drawCtx.restore();
           }
-          ctx.lineWidth = s.width ?? 2;
-          ctx.strokeStyle = s.stroke ?? PALETTE[0];
-          ctx.beginPath();
-          ctx.arc(cc.x, cc.y, r, 0, Math.PI * 2);
-          ctx.stroke();
+          drawCtx.beginPath();
+          drawCtx.arc(cc.x, cc.y, r, 0, Math.PI * 2);
+          drawCtx.stroke();
         }
       };
 
-      // figuras
       for (const s of store.shapes) drawShape(s);
       if (store.draft) drawShape(store.draft);
 
-      // handles selección
+      // handles
       if (store.selectedId) {
-        const s = store.shapes.find((s) => s.id === store.selectedId);
+        const s = store.shapes.find((x) => x.id === store.selectedId);
         if (s) {
-          ctx.fillStyle = s.stroke ?? PALETTE[0];
-          const push = (p: DataPt) => {
-            const pt = toPx(p);
+          drawCtx.fillStyle = s.stroke ?? PALETTE[0];
+          const push = (p: DataPt | null, key: 'a' | 'b' | 'c' | 'e') => {
+            if (!p) return;
+            const pt = toPxWithCache(s.id, key, p);
             if (!pt) return;
             ctx.beginPath();
             ctx.arc(pt.x, pt.y, HANDLE_R, 0, Math.PI * 2);
             ctx.fill();
           };
-          if (s.t === ToolType.Line) {
-            push(s.a);
-            push(s.b);
+          if (s.t === 'Line') {
+            push(s.a, 'a');
+            push(s.b, 'b');
           }
-          if (s.t === ToolType.Rect) {
-            push(s.a);
-            push(s.b);
+          if (s.t === 'Rect') {
+            push(s.a, 'a');
+            push(s.b, 'b');
           }
-          if (s.t === ToolType.Circle) {
-            push(s.c);
-            push(s.e);
+          if (s.t === 'Circle') {
+            push(s.c, 'c');
+            push(s.e, 'e');
           }
         }
       }
+
+      // Presentar el buffer → pantalla (sin tearing)
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.drawImage(buf, 0, 0);
     };
 
     // --- hit tests simples
@@ -786,6 +1149,7 @@ const DrawingCanvas: React.FC<Props> = observer(
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onContextMenu={onCanvasContextMenu}
       />
     );
   }

@@ -23,8 +23,9 @@ import {
 } from '../utils/chart-utils';
 import DrawingCanvas from './drawing-canvas';
 import { sma } from '../utils/indicators';
-import { DrawIcon, ToolType } from './shared';
+import { DrawIcon, EyeIcon, EyeOffIcon, RefreshIcon, ToolType } from './shared';
 import TimeScrollbar from './time-scrollbar';
+import MarketStatus from './market-status';
 
 const favoriteETFs = [
   'SPY',
@@ -78,6 +79,9 @@ const TradingChart: FC<any> = observer(() => {
     low24h,
     refresh,
     timePeriods,
+    drawingColor,
+    drawingWidth,
+    drawingsVisible,
     setIsChartReady,
     setIsLoading,
     setTicker,
@@ -90,6 +94,9 @@ const TradingChart: FC<any> = observer(() => {
     setLow24h,
     setVolume,
     setRefresh,
+    setDrawingColor,
+    setDrawingWidth,
+    setDrawingsVisible,
   } = tradingChartsViewModel;
 
   // Create chart & series
@@ -278,7 +285,7 @@ const TradingChart: FC<any> = observer(() => {
     setActiveTool(activeTool === tool ? ToolType.None : tool);
 
   return (
-    <div className={`chart-wrap`}>
+    <div className="chart-wrap">
       <div className="trading-chart-container">
         <div className="toolbar">
           <div className="fav-row">
@@ -291,15 +298,62 @@ const TradingChart: FC<any> = observer(() => {
                 {sym}
               </button>
             ))}
-            <button onClick={() => setRefresh(true)}>Refresh</button>
+            <button
+              className={`refresh-btn ${refresh ? 'is-loading' : ''}`}
+              onClick={() => setRefresh(true)}
+              title="Refrescar datos"
+              disabled={refresh}
+            >
+              <RefreshIcon className="icon" />
+              <span>Recargar</span>
+            </button>
           </div>
         </div>
 
         <div className="chart-header">
-          <h2 className="chart-title">Gráfico de {ticker}</h2>
+          <h2 className="chart-title">Símbolo {ticker}</h2>
+          <MarketStatus />
           <div className="chart-controls">
             <SymbolSearch onSymbolSelect={handleSymbolSelected} />
           </div>
+        </div>
+
+        <div className="draw-controls">
+          <label className="ctrl">
+            <input
+              type="color"
+              value={drawingColor}
+              onChange={(e) => setDrawingColor(e.target.value)}
+              title="Color de dibujo"
+            />
+            <span>Color</span>
+          </label>
+
+          <label className="ctrl">
+            <input
+              type="range"
+              min={1}
+              max={6}
+              step={1}
+              value={drawingWidth}
+              onChange={(e) => setDrawingWidth(Number(e.target.value))}
+              title="Grosor"
+            />
+            <span>{drawingWidth}px</span>
+          </label>
+
+          <button
+            className={`icon-btn ${drawingsVisible ? 'active' : ''}`}
+            onClick={() => setDrawingsVisible(!drawingsVisible)}
+            aria-pressed={drawingsVisible}
+            title={drawingsVisible ? 'Ocultar dibujos' : 'Mostrar dibujos'}
+          >
+            {drawingsVisible ? (
+              <EyeIcon className="icon" />
+            ) : (
+              <EyeOffIcon className="icon" />
+            )}
+          </button>
         </div>
 
         <div className={`chart-area ${isLoading ? 'loading' : ''}`}>
@@ -322,6 +376,9 @@ const TradingChart: FC<any> = observer(() => {
                 tool={activeTool as any}
                 onFinishDraw={() => setActiveTool(ToolType.None)}
                 onSetTool={(tool) => setActiveTool(tool)}
+                drawingColor={drawingColor}
+                drawingWidth={drawingWidth}
+                drawingsVisible={drawingsVisible}
               />
             )}
         </div>

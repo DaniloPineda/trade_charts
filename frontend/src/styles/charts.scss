@@ -125,8 +125,8 @@
 
 .draw-controls {
   position: absolute;
-  top: 88px;
-  right: 30px;
+  bottom: 50px;
+  right: 19px;
   z-index: 3;
 }
 
@@ -239,4 +239,18 @@
 .draw-canvas.active {
   pointer-events: auto; /* capturamos solo con herramienta activa */
   cursor: crosshair;
+}
+.draw-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.draw-controls .ctrl {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  color: #cbd5e1;
+}
+.btn.muted {
+  opacity: 0.6;
 }

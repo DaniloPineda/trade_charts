@@ -12,6 +12,9 @@ class TradingChartsViewModel {
     isLoading: boolean = false;
     isChartReady: boolean = false;
     refresh: boolean = false;
+    drawingsVisible: boolean = true;
+    drawingColor: string = '#22d3ee';
+    drawingWidth: number = 2;
   
     // State for the info bar
     lastPrice: number | null = null;
@@ -34,6 +37,9 @@ class TradingChartsViewModel {
             high24h: observable,
             low24h: observable,
             refresh: observable,
+            drawingColor: observable,
+            drawingsVisible: observable,
+            drawingWidth: observable,
             //Actions
             setIsChartReady: action,
             setIsLoading: action,
@@ -46,6 +52,9 @@ class TradingChartsViewModel {
             setLow24h: action,
             setVolume: action,
             setRefresh: action,
+            setDrawingColor: action,
+            setDrawingsVisible: action,
+            setDrawingWidth: action,
         })
     }
 
@@ -102,6 +111,18 @@ class TradingChartsViewModel {
 
   setRefresh = (refresh: boolean) => {
     this.refresh = refresh;
+  }
+
+  setDrawingsVisible = (drawingsVisible: boolean) => {
+    this.drawingsVisible = drawingsVisible;
+  }
+  
+  setDrawingColor = (drawingColor: string) => {
+    this.drawingColor = drawingColor;
+  }
+  
+  setDrawingWidth = (drawingWidth: number) => {
+      this.drawingWidth = drawingWidth;
   }
 
   getHistoricalData = async() => {

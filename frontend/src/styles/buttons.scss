@@ -77,3 +77,66 @@
   position: relative;
   z-index: 10;
 } /* por si acaso */
+
+/* Botón genérico con icono */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.42rem 0.7rem;
+  border-radius: 999px;
+  background: #0b1220; /* slate-950 aprox */
+  border: 1px solid #334155; /* slate-700 */
+  color: #e5e7eb; /* slate-200 */
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s,
+    color 0.15s;
+}
+.icon-btn:hover {
+  background: #0e172a;
+  border-color: #475569;
+}
+.icon-btn:active {
+  transform: translateY(1px);
+}
+.icon-btn.active {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25) inset;
+}
+.icon-btn .icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Refresh */
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.42rem 0.7rem;
+  border-radius: 0.6rem;
+  background: #0b1220;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  cursor: pointer;
+  position: fixed;
+  right: 25px;
+}
+.refresh-btn:hover {
+  border-color: #60a5fa;
+  color: #fff;
+}
+.refresh-btn .icon {
+  width: 16px;
+  height: 16px;
+}
+.refresh-btn.is-loading .icon {
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,5 +1,4 @@
 import React, { FC, useEffect, useRef } from 'react';
-import './../styles/charts.scss';
 import {
   createChart,
   ColorType,
@@ -21,11 +20,12 @@ import {
   formatVolume,
   toTs,
 } from '../utils/chart-utils';
-import DrawingCanvas from './drawing-canvas';
 import { sma } from '../utils/indicators';
 import { DrawIcon, EyeIcon, EyeOffIcon, RefreshIcon, ToolType } from './shared';
 import TimeScrollbar from './time-scrollbar';
 import MarketStatus from './market-status';
+import DrawingCanvas from './drawing-canvas';
+//import DrawingCanvas from './drawing-canvas/drawing-canvas';
 
 const favoriteETFs = [
   'SPY',
@@ -373,9 +373,9 @@ const TradingChart: FC<any> = observer(() => {
                 chart={chartRef.current}
                 series={candleSeriesRef.current}
                 storageKey={`${ticker}:${selectedPeriod}`}
-                tool={activeTool as any}
+                tool={activeTool}
                 onFinishDraw={() => setActiveTool(ToolType.None)}
-                onSetTool={(tool) => setActiveTool(tool)}
+                onSetTool={setActiveTool}
                 drawingColor={drawingColor}
                 drawingWidth={drawingWidth}
                 drawingsVisible={drawingsVisible}

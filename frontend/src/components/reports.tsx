@@ -1,6 +1,5 @@
 // frontend/src/components/ReportsPage.tsx
 import React, { useState, useEffect } from 'react';
-import './reports.css'; // Crearemos este archivo para los estilos
 
 // Definimos la estructura de los datos que esperamos del API
 interface UpcomingReport {

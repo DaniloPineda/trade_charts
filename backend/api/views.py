@@ -13,33 +13,137 @@ FINNHUB_API_TOKEN = os.environ.get(
     "FINNHUB_API_TOKEN", "d292e3pr01qhoen9cd70d292e3pr01qhoen9cd7g"
 )
 
-def get_yfinance_params(period):
+def get_yfinance_params(period: str):
     """
-    Translates our simple period string into the parameters
-    that the yfinance library expects.
+    Translate our period string to yfinance params.
+    For '1h' we purposely fetch 5m / 60d to aggregate server-side
+    into: 8:30–9:00 (half hour) then hourly buckets in CST.
     """
     if period == '1m':
         return {'period': '7d', 'interval': '1m'}
     elif period == '15m':
         return {'period': '60d', 'interval': '15m'}
     elif period == '1h':
-        return {'period': '730d', 'interval': '1h'}
+        # Use 5m to allow custom CST bucketing; 60d is the max for 5m on Yahoo
+        return {'period': '60d', 'interval': '5m'}
     elif period == '1d':
         return {'period': '5y', 'interval': '1d'}
     elif period == '1w':
         return {'period': 'max', 'interval': '1wk'}
     else:
-        # Default to 1 day if the period is unknown
         return {'period': '5y', 'interval': '1d'}
+
+
+def _to_cst(ts_series: pd.Series) -> pd.Series:
+    """
+    Ensure tz-aware series in America/Chicago (handles both tz-aware and naive).
+    """
+    s = pd.to_datetime(ts_series, utc=True, errors='coerce')
+    # s is now tz-aware UTC; convert to America/Chicago (CST/CDT as appropriate)
+    return s.dt.tz_convert('America/Chicago')
+
+
+def _bucket_start_cst(ts_cst: pd.Timestamp) -> pd.Timestamp:
+    """
+    Given a tz-aware Timestamp in America/Chicago, return the bucket start:
+      - If 08:30–08:59 → 08:30
+      - If 09:00–14:59 → hour start (09:00, 10:00, ..., 14:00)
+      - Else → NaT (outside regular session)
+    """
+    if ts_cst.tz is None:
+        return pd.NaT
+
+    day = ts_cst.normalize()  # midnight, same tz
+    open_ = day + pd.Timedelta(hours=8, minutes=30)
+    nine  = day + pd.Timedelta(hours=9)
+    close = day + pd.Timedelta(hours=15)
+
+    if ts_cst < open_ or ts_cst >= close:
+        return pd.NaT
+    if ts_cst < nine:
+        return open_
+    # truncate to the hour
+    hour_start = day + pd.Timedelta(hours=ts_cst.hour)
+    return hour_start
+
+
+def aggregate_cst_onehour_first_halfhour(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Input df: columns include a datetime-like index or 'Datetime'/'datetime' column,
+              and OHLC (+ optional 'Volume'/'volume').
+    Output: DataFrame with columns: time (UTC seconds), open, high, low, close, [volume]
+    """
+    # 1) Build a proper datetime column (tz-aware UTC)
+    if 'Datetime' in df.columns:
+        dt_utc = pd.to_datetime(df['Datetime'], utc=True, errors='coerce')
+    elif 'datetime' in df.columns:
+        dt_utc = pd.to_datetime(df['datetime'], utc=True, errors='coerce')
+    else:
+        # If datetime lives in the index:
+        if isinstance(df.index, pd.DatetimeIndex):
+            # Make sure index is UTC
+            if df.index.tz is None:
+                dt_utc = pd.to_datetime(df.index, utc=True)
+            else:
+                dt_utc = df.index.tz_convert('UTC')
+        else:
+            raise ValueError("No datetime column or DatetimeIndex found.")
+
+    # 2) Convert to CST (auto DST handling)
+    dt_cst = dt_utc.dt.tz_convert('America/Chicago')
+
+    # 3) Compute bucket starts (CST)
+    buckets_cst = dt_cst.apply(_bucket_start_cst)
+    mask = buckets_cst.notna()
+
+    if not mask.any():
+        return pd.DataFrame(columns=['time', 'open', 'high', 'low', 'close', 'volume'])
+
+    # 4) Group by bucket (convert bucket to UTC to be unambiguous)
+    buckets_utc = buckets_cst[mask].dt.tz_convert('UTC')
+
+    work = df.loc[mask].copy()
+    work['_bucket_utc'] = buckets_utc.values
+
+    # Normalize column names to lower-case for OHLC
+    work.columns = [str(c).lower() for c in work.columns]
+
+    # Volume might be 'volume' or absent
+    has_volume = 'volume' in work.columns
+
+    agg_dict = {
+        'open':  ('open',  'first'),
+        'high':  ('high',  'max'),
+        'low':   ('low',   'min'),
+        'close': ('close', 'last'),
+    }
+    if has_volume:
+        agg_dict['volume'] = ('volume', 'sum')
+
+    grouped = (
+        work
+        .groupby('_bucket_utc', as_index=False)
+        .agg(**agg_dict)
+        .sort_values('_bucket_utc')
+    )
+
+    # 5) Bucket start in UTC seconds
+    grouped['time'] = (grouped['_bucket_utc'].view('int64') // 10**9).astype(int)
+
+    cols = ['time', 'open', 'high', 'low', 'close']
+    if has_volume:
+        cols.append('volume')
+
+    return grouped[cols]
+
+# VISTAS
 
 class MarketDataView(APIView):
     def get(self, request):
         ticker = request.query_params.get("ticker", "SPY").upper()
         period_str = request.query_params.get('period', '1d')
-        
-        # Get the correct parameters for the yfinance call
-        yf_params = get_yfinance_params(period_str)
 
+        yf_params = get_yfinance_params(period_str)
         print(f"Fetching data for Ticker: {ticker}, Period: {period_str}...")
 
         try:
@@ -47,6 +151,8 @@ class MarketDataView(APIView):
                 ticker,
                 period=yf_params['period'],
                 interval=yf_params['interval'],
+                auto_adjust=False,
+                progress=False,
             )
 
             if data.empty:
@@ -54,35 +160,42 @@ class MarketDataView(APIView):
                     {"error": f"No data found for ticker: {ticker} with specified period."},
                     status=404
                 )
-            
-            # --- Data Processing (same as your download script) ---
-            data.reset_index(inplace=True)
 
+            # yfinance returns columns like ('Open','High','Low','Close','Adj Close','Volume')
             if isinstance(data.columns, pd.MultiIndex):
                 data.columns = data.columns.get_level_values(0)
 
-            data.columns = data.columns.str.lower()
+            data.reset_index(inplace=True)  # bring Datetime to columns
+
+            # --- Custom CST aggregation ONLY for 1h ---
+            if period_str == '1h':
+                out = aggregate_cst_onehour_first_halfhour(data)
+                return Response(out.to_dict('records'))
+
+            # --- Default shaping (as you had) ---
+            cols = [c.lower() for c in data.columns]
+            data.columns = cols
 
             if 'datetime' in data.columns:
                 data['time'] = pd.to_datetime(data['datetime']).apply(
-                    lambda d: int(d.timestamp())
+                    lambda d: int(pd.Timestamp(d).tz_localize('UTC').timestamp())
+                    if pd.Timestamp(d).tzinfo is None
+                    else int(pd.Timestamp(d).tz_convert('UTC').timestamp())
                 )
             elif 'date' in data.columns:
-                data['time'] = pd.to_datetime(data['date']).apply(
-                    lambda d: d.strftime('%Y-%m-%d')
-                )
+                data['time'] = pd.to_datetime(data['date']).dt.strftime('%Y-%m-%d')
 
-            # for col in ['open', 'high', 'low', 'close']:
-            #     data[col] = pd.to_numeric(data[col], errors='coerce')
-            # data.dropna(inplace=True)
+            base_cols = ['time', 'open', 'high', 'low', 'close']
+            if 'volume' in data.columns:
+                base_cols.append('volume')
 
-            historical_data = data[['time', 'open', 'high', 'low', 'close']]
-            
+            historical_data = data[base_cols]
             return Response(historical_data.to_dict('records'))
 
         except Exception as e:
-            print(f"ERROR: An error occurred while fetching from yfinance: {e}")
+            print(f"ERROR: {e}")
             return Response({"error": "An unexpected server error occurred."}, status=500)
+
 
 # VISTA NUEVA PARA BÚSQUEDA DE SÍMBOLOS
 class SymbolSearchView(APIView):

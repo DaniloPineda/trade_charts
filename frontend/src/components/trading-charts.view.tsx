@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useRef } from 'react';
+import React, { FC, useCallback, useEffect, useRef, useState } from 'react';
 import {
   createChart,
   ColorType,
@@ -8,6 +8,7 @@ import {
   LineSeries,
   type IChartApi,
   type ISeriesApi,
+  Time,
 } from 'lightweight-charts';
 import SymbolSearch from './symbol-search/symbol-search.view';
 import { CandleData, TimePeriod } from '../dtos/ticker-data.dto';
@@ -63,6 +64,8 @@ const TradingChart: FC<any> = observer(() => {
   const barsRef = useRef<CandleData[]>([]);
   const lastBarRef = useRef<CandleData | null>(null);
   const prevBarRef = useRef<CandleData | null>(null);
+  const [dataEpoch, setDataEpoch] = useState(0);
+  const lastKeyRef = useRef<string | null>(null);
 
   let webSocket: WebSocket | null = null;
 
@@ -99,9 +102,33 @@ const TradingChart: FC<any> = observer(() => {
     setDrawingsVisible,
   } = tradingChartsViewModel;
 
+  const tz = 'America/Chicago';
+  const partsToHM = (d: Date) => {
+    const p = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(d);
+    const val = (t: string) => p.find((x) => x.type === t)?.value ?? '';
+    return `${val('hour')}:${val('minute')}`;
+  };
+
+  const bumpEpoch = useCallback(() => {
+    // Espera 2 frames para que LWC asiente layout y luego notifica
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => setDataEpoch((n) => n + 1))
+    );
+  }, []);
+
   // Create chart & series
   useEffect(() => {
     if (!chartContainerRef.current) return;
+
+    const getSize = () => ({
+      width: Math.max(0, chartContainerRef.current!.clientWidth),
+      height: Math.max(0, chartContainerRef.current!.clientHeight),
+    });
 
     if (chartRef.current) {
       chartRef.current.remove();
@@ -109,9 +136,11 @@ const TradingChart: FC<any> = observer(() => {
     }
     setIsLoading(true);
 
+    const { width, height } = getSize();
+
     const chart = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: window.innerWidth >= 1024 ? window.innerHeight - 300 : 400,
+      width,
+      height,
       layout: {
         background: { type: ColorType.Solid, color: '#0f172a' },
         textColor: '#e5e7eb',
@@ -133,7 +162,30 @@ const TradingChart: FC<any> = observer(() => {
       },
     });
 
+    chart.applyOptions({
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+      handleScale: {
+        axisPressedMouseMove: true,
+        mouseWheel: true,
+        pinch: true,
+      },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+        tickMarkFormatter: (time: Time) => {
+          const ts = (time as unknown as number) * 1000;
+          return partsToHM(new Date(ts));
+        },
+      },
+    });
+
     const candle = chart.addSeries(CandlestickSeries, {
+      priceScaleId: 'right',
       upColor: '#10b981',
       downColor: '#ef4444',
       borderVisible: false,
@@ -141,21 +193,56 @@ const TradingChart: FC<any> = observer(() => {
       wickDownColor: '#ef4444',
     });
 
-    const volume = chart.addSeries(HistogramSeries, {
-      priceScaleId: '',
-      priceFormat: { type: 'volume' },
-      base: 0,
+    candle.applyOptions({
+      lastValueVisible: true, // muestra etiqueta en el eje derecho
+      priceLineVisible: true, // y la línea horizontal
+      priceLineColor: '#064e3b', // verde oscuro (emerald-900 aprox.)
+      priceLineStyle: LineStyle.Solid,
+      priceLineWidth: 2,
     });
 
-    const s20 = chart.addSeries(LineSeries, { color: '#22d3ee', lineWidth: 2 });
-    const s40 = chart.addSeries(LineSeries, { color: '#a78bfa', lineWidth: 2 });
+    const volume = chart.addSeries(HistogramSeries, {
+      priceScaleId: 'volume',
+      priceFormat: { type: 'volume' },
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+
+    chart.priceScale('right').applyOptions({
+      scaleMargins: { top: 0.05, bottom: 0.25 }, // velas ocupan ~75% arriba
+    });
+
+    chart.priceScale('volume').applyOptions({
+      scaleMargins: { top: 0.8, bottom: 0.0 }, // volumen ocupa ~20% abajo
+    });
+
+    const s20 = chart.addSeries(LineSeries, {
+      color: '#ffdb50',
+      lineWidth: 1,
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: false,
+    });
+    const s40 = chart.addSeries(LineSeries, {
+      color: '#ed7830',
+      lineWidth: 1,
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: false,
+    });
     const s100 = chart.addSeries(LineSeries, {
-      color: '#f59e0b',
+      color: '#9430ed',
       lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: false,
     });
     const s200 = chart.addSeries(LineSeries, {
-      color: '#ef4444',
+      color: '#274feb',
       lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: false,
     });
 
     chartRef.current = chart;
@@ -167,7 +254,7 @@ const TradingChart: FC<any> = observer(() => {
     s200Ref.current = s200;
 
     (async () => {
-      const raw = await getHistoricalData(); // [{time, open, high, low, close, volume}]
+      const raw = await getHistoricalData();
       const rows: CandleData[] = raw.map((r) => ({
         time: toTs(r.time),
         open: r.open,
@@ -189,20 +276,29 @@ const TradingChart: FC<any> = observer(() => {
       s100.setData(sma(rows, 100));
       s200.setData(sma(rows, 200));
 
-      chart.timeScale().scrollToPosition(-FUTURE_BARS, false);
+      const ts = chart.timeScale();
+      ts.fitContent();
+      ts.scrollToPosition(-FUTURE_BARS, false);
+
+      bumpEpoch();
 
       if (rows.length)
         lastTimestampRef.current = rows[rows.length - 1].time as number;
       setIsChartReady();
+      setDataEpoch((v) => v + 1);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setDataEpoch((e) => e + 1));
+      });
       setIsLoading(false);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsLoading(false));
+      });
     })();
 
     const ro = new ResizeObserver(() => {
-      if (!chartContainerRef.current || !chartRef.current) return;
-      chartRef.current.applyOptions({
-        width: chartContainerRef.current.clientWidth,
-        height: window.innerWidth >= 1024 ? window.innerHeight - 300 : 400,
-      });
+      if (!chartRef.current || !chartContainerRef.current) return;
+      const { width, height } = getSize();
+      chartRef.current.resize(width, height);
     });
     ro.observe(chartContainerRef.current);
 
@@ -226,7 +322,10 @@ const TradingChart: FC<any> = observer(() => {
     const chart = chartRef.current;
 
     const fetchAndSet = async () => {
+      const key = `${ticker}:${selectedPeriod}`;
+      const prevPos = chart.timeScale().scrollPosition();
       setIsLoading(true);
+      setDataEpoch((v) => v + 1);
       try {
         const prevPos = chart.timeScale().scrollPosition();
         const raw = await getHistoricalData();
@@ -254,14 +353,33 @@ const TradingChart: FC<any> = observer(() => {
         s100Ref.current!.setData(sma(rows, 100));
         s200Ref.current!.setData(sma(rows, 200));
 
-        if (prevPos !== 0) chart.timeScale().scrollToPosition(prevPos, false);
-        else chart.timeScale().scrollToPosition(-FUTURE_BARS, false);
+        const ts = chart.timeScale();
+        if (lastKeyRef.current !== key) {
+          // símbolo/periodo nuevo → auto-ajuste
+          ts.fitContent();
+          ts.scrollToPosition(-FUTURE_BARS, false);
+          lastKeyRef.current = key;
+        } else {
+          // mismo símbolo/periodo → respeta la vista del usuario
+          if (prevPos !== 0) ts.scrollToPosition(prevPos, false);
+          else ts.scrollToPosition(-FUTURE_BARS, false);
+        }
+
+        bumpEpoch();
 
         if (rows.length)
           lastTimestampRef.current = rows[rows.length - 1].time as number;
+
+        setDataEpoch((v) => v + 1);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setDataEpoch((e) => e + 1));
+        });
       } finally {
         setIsLoading(false);
         setRefresh(false);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setIsLoading(false));
+        });
       }
     };
 
@@ -356,7 +474,7 @@ const TradingChart: FC<any> = observer(() => {
           </button>
         </div>
 
-        <div className={`chart-area ${isLoading ? 'loading' : ''}`}>
+        <div className={`chart-area${isLoading ? ' loading' : ''}`}>
           <div ref={chartContainerRef} className="chart-container" />
           {chartRef.current && (
             <TimeScrollbar
@@ -369,6 +487,7 @@ const TradingChart: FC<any> = observer(() => {
             candleSeriesRef.current &&
             chartContainerRef.current && (
               <DrawingCanvas
+                key={`draw-${ticker}:${selectedPeriod}`}
                 targetRef={chartContainerRef}
                 chart={chartRef.current}
                 series={candleSeriesRef.current}
@@ -379,6 +498,8 @@ const TradingChart: FC<any> = observer(() => {
                 drawingColor={drawingColor}
                 drawingWidth={drawingWidth}
                 drawingsVisible={drawingsVisible}
+                dataEpoch={dataEpoch}
+                isLoading={isLoading}
               />
             )}
         </div>

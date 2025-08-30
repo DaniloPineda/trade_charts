@@ -189,6 +189,7 @@ class DrawingStore {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr)) this.shapes = arr.filter(isValid);
     } catch {}
+    this.bump();
   }
 
   bump() {
@@ -208,6 +209,8 @@ type Props = {
   drawingsVisible?: boolean;
   onFinishDraw?: () => void;
   onSetTool?: (t: ToolType) => void;
+  dataEpoch?: number;
+  isLoading: boolean;
 };
 
 const DrawingCanvas: React.FC<Props> = observer(
@@ -217,6 +220,8 @@ const DrawingCanvas: React.FC<Props> = observer(
     series,
     storageKey,
     tool,
+    dataEpoch,
+    isLoading,
     drawingColor,
     drawingWidth,
     drawingsVisible,
@@ -224,6 +229,13 @@ const DrawingCanvas: React.FC<Props> = observer(
     onSetTool,
   }) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const lastEpochRef = useRef<number | null>(null);
+    useEffect(() => {
+      lastEpochRef.current = dataEpoch ?? 0;
+    }, []); // init
+    useEffect(() => {
+      lastEpochRef.current = dataEpoch ?? 0;
+    }, [dataEpoch]);
     const dragRef = useRef<{
       mode: 'move' | 'handle' | null;
       id: string | null;
@@ -232,6 +244,7 @@ const DrawingCanvas: React.FC<Props> = observer(
       snapshot?: Shape;
     }>({ mode: null, id: null });
     const store = useMemo(() => new DrawingStore(storageKey), [storageKey]);
+    const isDataChangingRef = React.useRef(false);
 
     // --- helpers de LWT v5
     const ts = () => chart?.timeScale();
@@ -244,50 +257,18 @@ const DrawingCanvas: React.FC<Props> = observer(
     const yToPrice = (y: number): number | null =>
       series?.coordinateToPrice(y) ?? null;
 
-    const isScalingRef = useRef(false);
+    const isNavigatingRef = useRef(false);
+    let navTimer: ReturnType<typeof setTimeout> | null = null;
     const pxCache = useRef<Map<string, { x: number; y: number }>>(new Map());
     const bufferRef = useRef<HTMLCanvasElement | null>(null);
-    let rafId: number | null = null;
+    const rafId = useRef<number | null>(null);
 
     const scheduleRedraw = () => {
-      if (rafId != null) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
+      if (rafId.current != null) cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(() => {
+        rafId.current = null;
         redraw();
       });
-    };
-
-    // add inside component
-    const onCanvasContextMenu: React.MouseEventHandler<HTMLCanvasElement> = (
-      e
-    ) => {
-      // permitir borrar en None o Select (ajusta si quieres en cualquier modo)
-      e.preventDefault();
-      const allow = tool === ToolType.None || tool === ToolType.Select;
-
-      // posición relativa al canvas
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      // si estabas dibujando, usa right-click como "cancel draft"
-      if (store.draft) {
-        e.preventDefault();
-        store.draft = null;
-        store.bump();
-        setCursor('default');
-        return;
-      }
-
-      // borrar figura si hay una debajo
-      const id = hitShapeIdAt(x, y);
-      if (allow && id) {
-        e.preventDefault(); // bloquea menú nativo SOLO si borramos
-        store.Erase(id);
-        store.select(null);
-        setCursor('default');
-      }
-      // si no hay figura, dejamos que salga el menú del navegador
     };
 
     const visibleLogicalSafe = (): LogicalRange | null => {
@@ -333,17 +314,20 @@ const DrawingCanvas: React.FC<Props> = observer(
     const toPxWithCache = (
       shapeId: string,
       key: 'a' | 'b' | 'c' | 'e',
-      d: DataPt | null | undefined
-    ): { x: number; y: number } | null => {
+      d: DataPt | null
+    ) => {
       const c = canvasRef.current;
-      if (!c || !d || d.logical == null || typeof d.price !== 'number')
-        return null;
+      if (!c || !d) return null;
+
+      const cacheKey = `${shapeId}:${key}`;
+      const prev = pxCache.current.get(cacheKey);
 
       // X
       let x: number | null = null;
       const cx = ts()?.logicalToCoordinate(d.logical);
       x = cx != null ? CN(cx) : null;
       if (x == null) {
+        // 1) Si el punto queda fuera, amárralo al borde (tu lógica actual)
         const vr = visibleLogicalSafe();
         if (vr) {
           const from = LN(vr.from),
@@ -351,45 +335,60 @@ const DrawingCanvas: React.FC<Props> = observer(
             l = LN(d.logical);
           x = l < from ? 0 : l > to ? c.clientWidth : null;
         }
+        // 2) Si sigue null y hay cache, úsala mientras escala o cambia datos
+        if (
+          x == null &&
+          prev &&
+          (isNavigatingRef.current || isDataChangingRef.current)
+        ) {
+          x = prev.x;
+        }
       }
 
       // Y
       let y: number | null = null;
       const cy = (series as any)?.priceToCoordinate?.(d.price);
       y = cy != null ? CN(cy as Coordinate) : null;
-
-      const cacheKey = `${shapeId}:${key}`;
-      const prev = pxCache.current.get(cacheKey);
-      if (y == null && prev && isScalingRef.current) y = prev.y;
+      if (
+        y == null &&
+        prev &&
+        (isNavigatingRef.current || isDataChangingRef.current)
+      ) {
+        y = prev.y;
+      }
 
       if (x != null && y != null) {
         pxCache.current.set(cacheKey, { x, y });
         return { x, y };
       }
-      return null;
+
+      // durante navegación, si no hay coords nuevas, usa las previas
+      return isNavigatingRef.current && prev ? prev : null;
     };
 
     useEffect(() => {
       if (!chart) return;
       const ts = chart.timeScale();
-      let tm: any;
 
-      const onRange = () => {
-        isScalingRef.current = true;
+      const onRangeChange = () => {
+        isNavigatingRef.current = true;
         scheduleRedraw();
-        clearTimeout(tm);
-        tm = setTimeout(() => {
-          isScalingRef.current = false;
+        if (navTimer) clearTimeout(navTimer);
+        // cuando dejan de llegarte eventos por ~100ms, terminó el pan/zoom
+        navTimer = setTimeout(() => {
+          isNavigatingRef.current = false;
           scheduleRedraw();
-        }, 120); // un pelín más largo para figuras grandes
+          pxCache.current.clear();
+        }, 100);
       };
 
-      ts.subscribeVisibleTimeRangeChange(onRange);
-      (ts as any).subscribeVisibleLogicalRangeChange?.(onRange);
+      ts.subscribeVisibleTimeRangeChange(onRangeChange);
+      (ts as any).subscribeVisibleLogicalRangeChange?.(onRangeChange);
+
       return () => {
-        clearTimeout(tm);
-        ts.unsubscribeVisibleTimeRangeChange(onRange);
-        (ts as any).unsubscribeVisibleLogicalRangeChange?.(onRange);
+        if (navTimer) clearTimeout(navTimer);
+        ts.unsubscribeVisibleTimeRangeChange(onRangeChange);
+        (ts as any).unsubscribeVisibleLogicalRangeChange?.(onRangeChange);
       };
     }, [chart]);
 
@@ -429,30 +428,6 @@ const DrawingCanvas: React.FC<Props> = observer(
       ro.observe(host);
       resize();
       pxCache.current.clear();
-      return () => ro.disconnect();
-    }, [targetRef]);
-
-    // --- tamaño HiDPI
-    useEffect(() => {
-      const host = targetRef.current;
-      const c = canvasRef.current;
-      if (!host || !c) return;
-      const resize = () => {
-        const dpr = window.devicePixelRatio || 1,
-          w = host.clientWidth,
-          h = host.clientHeight;
-        c.style.width = `${w}px`;
-        c.style.height = `${h}px`;
-        c.width = Math.round(w * dpr);
-        c.height = Math.round(h * dpr);
-        const ctx = c.getContext('2d');
-        if (!ctx) return;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        redraw();
-      };
-      const ro = new ResizeObserver(resize);
-      ro.observe(host);
-      resize();
       return () => ro.disconnect();
     }, [targetRef]);
 
@@ -651,7 +626,7 @@ const DrawingCanvas: React.FC<Props> = observer(
       if (!host || !chart || !series) return;
 
       const onDown = (ev: PointerEvent) => {
-        if (tool !== 'None') return;
+        if (tool !== ToolType.None) return;
         const rect = (canvasRef.current ?? host).getBoundingClientRect();
         const x = ev.clientX - rect.left,
           y = ev.clientY - rect.top;
@@ -706,7 +681,7 @@ const DrawingCanvas: React.FC<Props> = observer(
     useEffect(() => {
       const dispose = autorun(() => {
         void store.dirty;
-        pxCache.current.clear();
+        isNavigatingRef.current = false;
         scheduleRedraw();
       });
       return () => dispose();
@@ -731,6 +706,72 @@ const DrawingCanvas: React.FC<Props> = observer(
     useEffect(() => {
       scheduleRedraw();
     }, [tool, chart, series]);
+
+    useEffect(() => {
+      // NO limpies pxCache aquí
+      isDataChangingRef.current = true;
+
+      let cancelled = false;
+      let tries = 0;
+
+      const settle = () => {
+        if (cancelled) return;
+        isDataChangingRef.current = false;
+        scheduleRedraw();
+      };
+
+      const tick = () => {
+        if (cancelled) return;
+        // En cuanto todas las coordenadas estén listas,
+        // salimos del modo "data changing"
+        if (canLayoutAll() || tries++ > 60) {
+          settle();
+        } else {
+          requestAnimationFrame(tick);
+        }
+      };
+
+      // dos frames para dejar que LWC asiente layout, luego reintenta
+      requestAnimationFrame(() => requestAnimationFrame(tick));
+
+      return () => {
+        cancelled = true;
+        isDataChangingRef.current = false;
+      };
+    }, [dataEpoch]);
+
+    useEffect(() => {
+      isNavigatingRef.current = false;
+      isDataChangingRef.current = true;
+      pxCache.current.clear();
+      scheduleRedraw();
+
+      const prevEpoch = lastEpochRef.current;
+      const tid = window.setTimeout(() => {
+        if (lastEpochRef.current === prevEpoch) {
+          const c = canvasRef.current;
+          const buf = bufferRef.current;
+          if (c) {
+            const ctx = c.getContext('2d');
+            if (ctx) {
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.clearRect(0, 0, c.width, c.height);
+            }
+          }
+          if (buf) {
+            const bctx = buf.getContext('2d');
+            if (bctx) {
+              bctx.clearRect(0, 0, buf.width, buf.height);
+            }
+          }
+          pxCache.current.clear();
+          store.setHover(null);
+          store.select(null);
+          scheduleRedraw();
+        }
+      }, 1000);
+      return () => clearTimeout(tid);
+    }, [storageKey]);
 
     const canLayoutAll = (): boolean => {
       for (const s of store.shapes) {
@@ -775,11 +816,14 @@ const DrawingCanvas: React.FC<Props> = observer(
         bctx = buf.getContext('2d')!;
       const dpr = window.devicePixelRatio || 1;
 
-      // Si estamos escalando y aún faltan coordenadas, NO borres: blitea el último buffer
-      if (isScalingRef.current && !canLayoutAll()) {
+      if (
+        (isNavigatingRef.current || isDataChangingRef.current) &&
+        !canLayoutAll()
+      ) {
+        // NO recalcules nada: presentas el último buffer bueno
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, c.width, c.height);
-        ctx.drawImage(buf, 0, 0); // frame anterior
+        ctx.drawImage(buf, 0, 0);
         return;
       }
 
@@ -870,6 +914,9 @@ const DrawingCanvas: React.FC<Props> = observer(
             ctx.beginPath();
             ctx.arc(pt.x, pt.y, HANDLE_R, 0, Math.PI * 2);
             ctx.fill();
+            drawCtx.beginPath();
+            drawCtx.arc(pt.x, pt.y, HANDLE_R, 0, Math.PI * 2);
+            drawCtx.fill();
           };
           if (s.t === 'Line') {
             push(s.a, 'a');
@@ -994,9 +1041,8 @@ const DrawingCanvas: React.FC<Props> = observer(
       return diagNWSE ? 'nwse-resize' : 'nesw-resize';
     };
 
-    // --- pointer handlers (captura SOLO cuando tool !== 'None')
     const onPointerDown: React.PointerEventHandler<HTMLCanvasElement> = (e) => {
-      if (!chart || !series || tool === 'None') return;
+      if (!chart || !series || tool === ToolType.None) return;
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 
       const Rect = e.currentTarget.getBoundingClientRect();
@@ -1061,7 +1107,7 @@ const DrawingCanvas: React.FC<Props> = observer(
     };
 
     const onPointerMove: React.PointerEventHandler<HTMLCanvasElement> = (e) => {
-      if (!chart || !series || tool === 'None') return;
+      if (!chart || !series || tool === ToolType.None) return;
       const Rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - Rect.left,
         y = e.clientY - Rect.top;
@@ -1117,7 +1163,7 @@ const DrawingCanvas: React.FC<Props> = observer(
     };
 
     const onPointerUp: React.PointerEventHandler<HTMLCanvasElement> = (e) => {
-      if (!chart || !series || tool === 'None') return;
+      if (!chart || !series || tool === ToolType.None) return;
 
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
 
@@ -1145,11 +1191,18 @@ const DrawingCanvas: React.FC<Props> = observer(
     return (
       <canvas
         ref={canvasRef}
-        className={`draw-canvas ${tool !== 'None' ? 'active' : ''}`}
+        className="draw-canvas"
+        style={{
+          pointerEvents: tool === ToolType.None ? 'none' : 'auto',
+          cursor: tool === ToolType.None ? 'pointer' : 'crosshair',
+          visibility: isLoading || !chart || !series ? 'hidden' : 'visible',
+          position: 'absolute',
+          inset: 0,
+          zIndex: 3,
+        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onContextMenu={onCanvasContextMenu}
       />
     );
   }

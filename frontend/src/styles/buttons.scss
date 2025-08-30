@@ -59,19 +59,8 @@
 .compact .toolbar,
 .compact .statusbar {
   display: none;
-} /* más espacio al chart */
-.chart-wrap {
-  position: relative;
-  height: calc(100vh - 180px);
-}
-.compact .chart-wrap {
-  height: calc(100vh - 110px);
 }
 
-.chart-wrap {
-  position: relative;
-  overflow: hidden;
-}
 .fav-row,
 .toolbar {
   position: relative;

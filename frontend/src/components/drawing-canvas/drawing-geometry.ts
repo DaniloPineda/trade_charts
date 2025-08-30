@@ -30,6 +30,23 @@ import type {
     return { from: lf as any, to: lt as any };
   }
   
+  const estimateXFromLogical = (
+    ts: ITimeScaleApi<Time>,
+    l: Logical,
+    getCanvas: () => HTMLCanvasElement | null
+  ): number | null => {
+    const vr = visibleLogicalSafe(ts);
+    const c = getCanvas();
+    if (!vr || !c) return null;
+    const from = LN(vr.from), to = LN(vr.to);
+    if (to === from) return null;
+    const w = c.clientWidth;
+    const x = ((LN(l) - from) / (to - from)) * w;
+    // opcional: clamp suave para evitar bleeding
+    return Math.max(-64, Math.min(w + 64, x));
+  };
+
+  
   export function makeGeometryUtils(deps: {
     ts: ITimeScaleApi<Time>;
     series: ISeriesApi<'Candlestick'> | null;
